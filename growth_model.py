@@ -5,7 +5,6 @@ from scipy.integrate import odeint
 import matplotlib.pyplot as plt
 import itertools as iter
 from multiprocessing import Pool
-from functools import partial
 
 
 def ODE_RHS(n, t, a, b, n_max, temp):
@@ -18,7 +17,7 @@ def generate_result(ODE_func, n0, t, params, vars):
     return odeint(ODE_func, n0, t, args=(a, b, n_max, temp))
 
 
-def obtain_results(ODE_func, params, variables, sample_times):
+def obtain_results(sample_times, params, variables, ODE_func):
     results = np.zeros(list(x.size for x in params + variables) + [sample_times.size])
 
     for index_param in iter.product(*[range(x.size) for x in params]):
@@ -30,11 +29,11 @@ def obtain_results(ODE_func, params, variables, sample_times):
     return results
 
 
-def observable(sample_times, ode_results):
+def observable(sample_times, params, variables, ode_results):
     return ode_results
 
 
-def get_large_S_matrix(params, variables, results):
+def get_large_S_matrix(sample_times, params, variables, results):
     """now we calculate the derivative with respect to the parameters
     The matrix S has the form 
     O   -->  observable
@@ -48,19 +47,18 @@ def get_large_S_matrix(params, variables, results):
     return S
 
 
-def Large_S_matrix_to_determinant(S, params, variables, sample_times):
+def Large_S_matrix_to_determinant(S, sample_times, params, variables):
     S_trans = S.reshape(len(params), sum(y.size for y in variables) * sample_times.size)
     
     # Calculate Fisher Matrix
     F = S_trans.dot(S_trans.T)
     
-    # Calculate Eigenvalues and determinant
-    # w, v = np.linalg.eig(F)
+    # Calculate Determinant
     det = np.linalg.det(F)
     return det
 
 
-def Large_S_matrix_to_eigenvalue(S, params, variables, sample_times):
+def Large_S_matrix_to_eigenvalue(S, sample_times, params, variables):
     S_trans = S.reshape(len(params), sum(y.size for y in variables) * sample_times.size)
     
     # Calculate Fisher Matrix
@@ -71,10 +69,10 @@ def Large_S_matrix_to_eigenvalue(S, params, variables, sample_times):
     return w
 
 
-def calculate_Fischer_determinant(sample_times, ODE_func, params, variables):
-    results = obtain_results(ODE_func, params, variables, sample_times)
-    S = get_large_S_matrix(params, variables, results)
-    det = Large_S_matrix_to_determinant(S, params, variables, sample_times)
+def calculate_Fischer_determinant(sample_times, params, variables, ODE_func):
+    results = obtain_results(sample_times, params, variables, ODE_func)
+    S = get_large_S_matrix(sample_times, params, variables, results)
+    det = Large_S_matrix_to_determinant(S, sample_times, params, variables)
     return det, sample_times, params, variables
 
 
@@ -117,27 +115,22 @@ if __name__ == "__main__":
         sample_temps
     ]
 
-    many_sample_times = [np.sort(np.random.uniform(low=t0, high=tmax, size=n)) for n in range(2, 5)]
-    results = []
+    # How many points of time should be sampled at maximum? (Starting at 1)
+    N_t_min = 4
+    N_t_max = 10
+    # How many times should the random sampling take a sample of (eg. 3) time points
+    N_t_mult = 2
+    # Final result should look like this:
+    # many_sample_times = [
+    #   random_time_samples(len=1), random_time_samples(len=1), ...,        ==> N_t_mult times
+    #   random_time_samples(len=2), random_time_samples(len=2), ...,        ==> N_t_mult times
+    #   ...
+    # ]
+    many_sample_times = [np.sort(np.random.uniform(low=t0, high=tmax, size=n)) for n in range(N_t_min, N_t_max) for j in range(N_t_mult)]
 
-    with Pool(3) as p:
-        results = p.map(partial(calculate_Fischer_determinant, ODE_func=ODE_RHS, params=params, variables=variables), many_sample_times)
-
-    # for sample_times in many_sample_times:
-    #     results.append(calculate_Fischer_determinant(sample_times, ODE_RHS, params, variables))
-
-    results = sorted(results, key=lambda x: x[0], reverse=True)
+    # Use multithreading to solve the equations and obtain results
+    fischer_results = []
+    with Pool(16) as p:
+        fischer_results = p.starmap(calculate_Fischer_determinant, zip(many_sample_times, iter.repeat(params), iter.repeat(variables), iter.repeat(ODE_RHS)))
     
-    print("The first 4 winners are:")
-    for det, times, param, var in results[0:5]:
-        print("det:", det)
-        print("Times: ", times)
-        print("Parameter Values: ", param)
-        print("Variable Values: ", var)
-
-    for det, times, param, var in results[0:5]:
-        plt.plot(times, times*0.0, marker="o", linestyle="", label="Det: " + str(det))
-    plt.legend()
-    plt.show()
-    # pool = Pool(20)
-    # pool.map()
+    make_nice_plots(fischer_results)
