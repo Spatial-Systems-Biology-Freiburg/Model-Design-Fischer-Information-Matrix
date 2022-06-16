@@ -159,8 +159,9 @@ if __name__ == "__main__":
     ]
 
     # How many points of time should be sampled at maximum? (Starting at 1)
-    N_t_min = 2
-    N_t_max = 11
+    N_t_min = 5
+    N_t_max = 51
+    N_t_step = 5
     # How many times should the random sampling take a sample of (eg. 3) time points
     N_t_mult = 20
     # Final result should look like this:
@@ -169,7 +170,7 @@ if __name__ == "__main__":
     #   random_time_samples(len=2), random_time_samples(len=2), ...,        ==> N_t_mult times
     #   ...
     # ]
-    many_sample_times = [np.sort(np.random.uniform(low=t0, high=tmax, size=n)) for n in range(N_t_min, N_t_max) for j in range(N_t_mult)]
+    many_sample_times = [np.sort(np.random.uniform(low=t0, high=tmax, size=n)) for n in range(N_t_min, N_t_max, N_t_step) for j in range(N_t_mult)]
     
     # How many optimization runs are we doing?
     N_opt = 30
@@ -190,7 +191,7 @@ if __name__ == "__main__":
         # Delete old entries
         many_sample_times = []
         # We want to filter the list of results for each number of time-steps that we are solving
-        for nt in range(N_t_min, N_t_max):
+        for nt in range(N_t_min, N_t_max, N_t_step):
             for det, times, param, var in sorted(filter(lambda x: len(x[1]) == nt, fischer_results), key=lambda x: x[0], reverse=True)[0:N_best]:
                 # We create new time values by perturbing old ones
                 times_new = np.zeros((len(times), N_new))
