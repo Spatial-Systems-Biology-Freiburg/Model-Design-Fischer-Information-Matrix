@@ -159,9 +159,9 @@ if __name__ == "__main__":
     ]
 
     # How many points of time should be sampled at maximum? (Starting at 1)
-    N_t_min = 5
-    N_t_max = 51
-    N_t_step = 5
+    N_t_min = 2
+    N_t_max = 11
+    N_t_step = 1
     # How many times should the random sampling take a sample of (eg. 3) time points
     N_t_mult = 20
     # Final result should look like this:
