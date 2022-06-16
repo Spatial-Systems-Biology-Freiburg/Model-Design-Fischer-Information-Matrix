@@ -160,7 +160,7 @@ if __name__ == "__main__":
 
     # How many points of time should be sampled at maximum? (Starting at 1)
     N_t_min = 2
-    N_t_max = 12
+    N_t_max = 11
     # How many times should the random sampling take a sample of (eg. 3) time points
     N_t_mult = 20
     # Final result should look like this:
@@ -172,7 +172,7 @@ if __name__ == "__main__":
     many_sample_times = [np.sort(np.random.uniform(low=t0, high=tmax, size=n)) for n in range(N_t_min, N_t_max) for j in range(N_t_mult)]
     
     # How many optimization runs are we doing?
-    N_opt = 10
+    N_opt = 30
     # How many best results are we picking
     N_best = 5
     # How many new results are we generating from the chosen ones
