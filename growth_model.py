@@ -112,6 +112,11 @@ def make_nice_plots(fischer_results):
     ax2.legend()
     fig2.savefig("Success_N_times.png")
 
+
+def save_to_files(fischer_results):
+    pass
+
+
 if __name__ == "__main__":
     # Choose literature values
     a_0 = 1.0
@@ -170,3 +175,4 @@ if __name__ == "__main__":
         fischer_results = p.starmap(calculate_Fischer_determinant, zip(many_sample_times, iter.repeat(params), iter.repeat(variables), iter.repeat(ODE_RHS)))
     
     make_nice_plots(fischer_results)
+    save_to_files(fischer_results)
