@@ -151,7 +151,7 @@ if __name__ == "__main__":
     n0 = 20
 
     # Define sample space
-    sample_temps = np.arange(20, 30, 0.1)
+    sample_temps = np.arange(20, 30, 1)
 
     # # Additional Variables (like Temperature) over which we want to iterate
     variables = [
@@ -159,8 +159,8 @@ if __name__ == "__main__":
     ]
 
     # How many points of time should be sampled at maximum? (Starting at 1)
-    N_t_min = 4
-    N_t_max = 15
+    N_t_min = 2
+    N_t_max = 12
     # How many times should the random sampling take a sample of (eg. 3) time points
     N_t_mult = 20
     # Final result should look like this:
@@ -170,11 +170,54 @@ if __name__ == "__main__":
     #   ...
     # ]
     many_sample_times = [np.sort(np.random.uniform(low=t0, high=tmax, size=n)) for n in range(N_t_min, N_t_max) for j in range(N_t_mult)]
-
-    # Use multithreading to solve the equations and obtain results
-    fischer_results = []
-    with Pool(8) as p:
-        fischer_results = p.starmap(calculate_Fischer_determinant, zip(many_sample_times, iter.repeat(params), iter.repeat(variables), iter.repeat(ODE_RHS)))
     
+    # How many optimization runs are we doing?
+    N_opt = 10
+    # How many best results are we picking
+    N_best = 5
+    # How many new results are we generating from the chosen ones
+    N_new = 5
+    # How much do we decrease the interval?
+    diff_mod = 0.9
+
+    # Do multiple runs to extract the best result and optimize it
+    for n in range(N_opt):
+        # Use multithreading to solve the equations and obtain results
+        fischer_results = []
+        with Pool(14) as p:
+            fischer_results = p.starmap(calculate_Fischer_determinant, zip(many_sample_times, iter.repeat(params), iter.repeat(variables), iter.repeat(ODE_RHS)))
+        
+        # Delete old entries
+        many_sample_times = []
+        # We want to filter the list of results for each number of time-steps that we are solving
+        for nt in range(N_t_min, N_t_max):
+            for det, times, param, var in sorted(filter(lambda x: len(x[1]) == nt, fischer_results), key=lambda x: x[0], reverse=True)[0:N_best]:
+                # We create new time values by perturbing old ones
+                times_new = np.zeros((len(times), N_new))
+                
+                # We calculate the lower and upper bound of the next iteration
+                for i, t in enumerate(times):
+                    # In this case we are in between
+                    if i>0 and i<len(times)-1:
+                        t_low=t - (t-times[i-1])*diff_mod**(n+1)
+                        t_high=t + (times[i+1]-t)*diff_mod**(n+1)
+                    # We hit the bottom --> calculate with t0
+                    elif i==0:
+                        t_low=t - (t-t0)*diff_mod**(n+1)
+                        t_high=t + (times[i+1]-t)*diff_mod**(n+1)
+                    # We hit the top --> calculate with tmax
+                    elif i==len(times)-1:
+                        t_low=t - (t-times[i-1])*diff_mod**(n+1)
+                        t_high=t - (tmax-t)*diff_mod**(n+1)
+                    # Now we sample the first time-step of the next series N_new times
+                    # If we repeat this procedure, every time-step will be sampled
+                    times_new[i,:] = np.random.uniform(low=t_low, high=t_high, size=N_new)
+
+                # Now we have to slice the correct times from the newly created array
+                many_sample_times += [np.sort(times_new[:,k]) for k in range(N_new)]
+                # Also add the original one in case that this is better
+                many_sample_times += [times]
+        print("Optimization run {} done".format(n))
+
     make_nice_plots(fischer_results)
     save_to_files(fischer_results)
