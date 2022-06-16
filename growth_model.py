@@ -76,12 +76,9 @@ def calculate_Fischer_determinant(sample_times, params, variables, ODE_func):
     return det, sample_times, params, variables
 
 
-def make_nice_plots(fischer_results):
+def make_nice_plots(fischer_results, N_best=5):
     # Sort the results with respect to the value calculated (determinant in this example) and print first few ones
     fischer_results = sorted(fischer_results, key=lambda x: x[0], reverse=True)
-
-    # How many fischer_results do we want to print and plot
-    N_res = 5
     
     print("The first 4 winners are:")
     for det, times, param, var in fischer_results[0:5]:
@@ -91,14 +88,14 @@ def make_nice_plots(fischer_results):
         print("Variable Values: ", var)
 
     # Now make a plot for results
-    fig1, ax1 = plt.subplots(N_res, sharex='all')
-    for i, (det, times, param, var) in enumerate(fischer_results[0:N_res]):
+    fig1, ax1 = plt.subplots(N_best, sharex='all')
+    for i, (det, times, param, var) in enumerate(fischer_results[0:N_best]):
         ax1[i].plot(times, times*0.0, marker="o", linestyle="", label="Det: {:e}\nN_t: {}".format(det, times.size))
         box = ax1[i].get_position()
         ax1[i].legend(loc='center left', bbox_to_anchor=(1, 0.5))
         ax1[i].set_xlabel("Time")
         ax1[i].set_yticklabels([])
-    ax1[0].set_title("First "+ str(N_res) + " Winners")
+    ax1[0].set_title("First "+ str(N_best) + " Winners")
     fig1.tight_layout()
     fig1.subplots_adjust(hspace=.0)
     fig1.savefig("Winners_current.png")
@@ -113,7 +110,7 @@ def make_nice_plots(fischer_results):
     fig2.savefig("Success_N_times.png")
 
 
-def save_to_files(fischer_results):
+def save_to_files(fischer_results, N_best=5):
     pass
 
 
