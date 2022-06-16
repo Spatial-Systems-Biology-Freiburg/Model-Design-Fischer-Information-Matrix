@@ -111,7 +111,12 @@ def make_nice_plots(fischer_results, N_best=5):
 
 
 def save_to_files(fischer_results, N_best=5):
-    pass
+    for i, (det, times, param, var) in enumerate(fischer_results[0:N_best]):
+        np.save("result_{}_times".format(i), times)
+        for j, p in enumerate(param):
+            np.save("result_{}_param_{}".format(i, j), p)
+        for j, v in enumerate(var):
+            np.save("result_{}_var_{}".format(i, j), v)
 
 
 if __name__ == "__main__":
@@ -168,7 +173,7 @@ if __name__ == "__main__":
 
     # Use multithreading to solve the equations and obtain results
     fischer_results = []
-    with Pool(16) as p:
+    with Pool(8) as p:
         fischer_results = p.starmap(calculate_Fischer_determinant, zip(many_sample_times, iter.repeat(params), iter.repeat(variables), iter.repeat(ODE_RHS)))
     
     make_nice_plots(fischer_results)
