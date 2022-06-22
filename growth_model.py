@@ -107,6 +107,7 @@ def make_nice_plots(fischer_results, N_best=5):
     x = [f[1].size for f in fischer_results]
     y = [sorting_key(f) for f in fischer_results]
     ax2.plot(x, y, marker="x", linestyle="", color="k", label="Observable Value")
+    ax2.set_xticks(x)
     ax2.set_xlabel("Number of time steps sampled")
     ax2.set_ylabel("Determinant Value")
     ax2.legend()
