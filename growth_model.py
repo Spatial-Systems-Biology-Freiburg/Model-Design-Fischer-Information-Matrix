@@ -5,6 +5,7 @@ from scipy.integrate import odeint
 import matplotlib.pyplot as plt
 import itertools as iter
 from multiprocessing import Pool
+import time
 
 
 def ODE_RHS(n, t, a, b, n_max, temp):
@@ -188,6 +189,7 @@ if __name__ == "__main__":
     diff_mod = 0.9
 
     # Do multiple runs to extract the best result and optimize it
+    start_time = time.time()
     for n in range(N_opt):
         # Use multithreading to solve the equations and obtain results
         fischer_results = []
@@ -224,7 +226,10 @@ if __name__ == "__main__":
                 many_sample_times += [np.sort(times_new[:,k]) for k in range(N_new)]
                 # Also add the original one in case that this is better
                 many_sample_times += [times]
-        print("Optimization run {} done".format(n))
+        # Make nice output
+        line = "[{: " + str(len(str(N_opt))) + "d}/{:d}, {: 8.3f}s] Optimization run done"
+        print(line.format(n+1, N_opt, time.time()-start_time), end="\r")
+    print(line.format(n+1, N_opt, time.time()-start_time), end="\r")
 
     make_nice_plots(fischer_results)
     save_to_files(fischer_results)
