@@ -78,7 +78,7 @@ def calculate_Fischer_determinant(sample_times, params, variables, ODE_func):
 
 def make_nice_plots(fischer_results, N_best=5):
     # Sort the results with respect to the value calculated (determinant in this example) and print first few ones
-    fischer_results = sorted(fischer_results, key=lambda x: x[0], reverse=True)
+    fischer_results = sorted(fischer_results, key=sorting_key, reverse=True)
     
     print("The first 4 winners are:")
     for det, times, param, var in fischer_results[0:5]:
@@ -103,7 +103,9 @@ def make_nice_plots(fischer_results, N_best=5):
 
     fig2, ax2 = plt.subplots(1)
     ax2.set_title("Determinant vs N_t")
-    ax2.plot([f[1].size for f in fischer_results], [f[0] for f in fischer_results], marker="x", linestyle="", color="k", label="Observable Value")
+    x = [f[1].size for f in fischer_results]
+    y = [sorting_key(f) for f in fischer_results]
+    ax2.plot(x, y, marker="x", linestyle="", color="k", label="Observable Value")
     ax2.set_xlabel("Number of time steps sampled")
     ax2.set_ylabel("Determinant Value")
     ax2.legend()
@@ -117,6 +119,10 @@ def save_to_files(fischer_results, N_best=5):
             np.save("result_{}_param_{}".format(i, j), p)
         for j, v in enumerate(var):
             np.save("result_{}_var_{}".format(i, j), v)
+
+
+def sorting_key(x):
+    return x[0]
 
 
 if __name__ == "__main__":
@@ -192,7 +198,7 @@ if __name__ == "__main__":
         many_sample_times = []
         # We want to filter the list of results for each number of time-steps that we are solving
         for nt in range(N_t_min, N_t_max, N_t_step):
-            for det, times, param, var in sorted(filter(lambda x: len(x[1]) == nt, fischer_results), key=lambda x: x[0], reverse=True)[0:N_best]:
+            for det, times, param, var in sorted(filter(lambda x: len(x[1]) == nt, fischer_results), key=sorting_key, reverse=True)[0:N_best]:
                 # We create new time values by perturbing old ones
                 times_new = np.zeros((len(times), N_new))
                 
