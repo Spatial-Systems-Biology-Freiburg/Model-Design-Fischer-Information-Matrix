@@ -145,6 +145,8 @@ if __name__ == "__main__":
     N_best = 5
     # How many new combinations should an old result spawn?
     N_spawn = 10
+    # How many processes will be run in parallel
+    N_parallel = 40
 
     # Begin sampling of time and temperature values
     combinations = []
@@ -166,7 +168,7 @@ if __name__ == "__main__":
     for opt_run in range(0, N_opt):
         print(print_line.format(time.time()-start_time, opt_run+1), end="\r")
         # Calculate new results
-        p = mp.Pool(15)
+        p = mp.Pool(N_parallel)
         fischer_results = p.starmap(calculate_Fischer_determinant, zip(combinations, iter.repeat(pool_model), iter.repeat(n0), iter.repeat(jacobi)))
 
         # Do not optimize further if we are in the last run
