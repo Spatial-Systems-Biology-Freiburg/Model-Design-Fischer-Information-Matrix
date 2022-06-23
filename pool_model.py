@@ -35,7 +35,7 @@ def factorize_reduced(M):
     return res
 
 
-def get_S_matrix(ODE_func, n0, t, Q_arr, P, Const, jacobian):
+def get_S_matrix(ODE_func, n0, times, Q_arr, P, Const, jacobian):
     """now we calculate the derivative with respect to the parameters
     The matrix S has the form
     i   -->  index of parameter
@@ -44,12 +44,15 @@ def get_S_matrix(ODE_func, n0, t, Q_arr, P, Const, jacobian):
     S[i, j1, j2, ..., t] = (dO/dp_i(v_j1, v_j2, v_j3, ..., t))"""
     # res = np.zeros((len(P),) + tuple(len(x) for x in Q_arr) + (t.size,))
     # res = np.zeros(tuple(len(x) for x in Q_arr) + (t.size,))
-    S = np.zeros((len(P),) + (t.size,) + tuple(len(x) for x in Q_arr))
-    
+    S = np.zeros((len(P),) + (times.shape[-1],) + tuple(len(x) for x in Q_arr))
+
     # Iterate over all combinations of Q-Values
     for index in iter.product(*[range(len(q)) for q in Q_arr]):
         # Store the results of the respective ODE solution
         Q = [Q_arr[i][j] for i, j in enumerate(index)]
+        t = times[index]
+
+        # Actually solve the ODE for the selected parameter values
         r = odeint(ODE_func, n0, t, args=(Q, P, Const)).reshape(t.size)
 
         # Calculate the S-Matrix with the supplied jacobian
@@ -70,22 +73,25 @@ def convert_S_matrix_to_determinant(S):
 
 
 def calculate_Fischer_determinant(combinations, ODE_func, Y0, jacobian, observable):
-    sample_times, Q_arr, P, Const = combinations
-    S = get_S_matrix(ODE_func, Y0, sample_times, Q_arr, P, Const, jacobian)
+    times, Q_arr, P, Const = combinations
+    S = get_S_matrix(ODE_func, Y0, times, Q_arr, P, Const, jacobian)
     obs = observable(S)
-    return obs, sample_times, P, Q_arr, Const, Y0
+    return obs, times, P, Q_arr, Const, Y0
 
 
 def sorting_key(x):
     '''Contents of x are typically results of calculate_Fischer_determinant (see above)
-    Thus x = (obs, sample_times, P, Q_arr, Const, Y0)'''
+    Thus x = (obs, times, P, Q_arr, Const, Y0)'''
     norm = max(len(x[2]) * x[1].size * np.prod([len(x) for x in x[3]]), 1.0)
     return x[0]/norm
 
 
-def make_nice_plot(fischer_results, effort):
+def make_nice_plot(fischer_results):
+    # Remember that entries in the fischer matrix have the form
+    # fischer_results[0] = (obs, times, P, Q_arr, Const, Y0)
     fig, ax = plt.subplots()
-    x = [len(f[1]) for f in fischer_results]
+    
+    x = [f[1].shape[-1] for f in fischer_results]
     y = [len(f[3][0]) for f in fischer_results]
     weights = [sorting_key(f) for f in fischer_results]
     
@@ -111,6 +117,7 @@ if __name__ == "__main__":
     # Define constants for the simulation duration
     n0 = 20.0
     n_max = 2000.0
+    effort_low = 2
     effort = 2**3
     Const = (n0, n_max)
 
@@ -152,9 +159,9 @@ if __name__ == "__main__":
     for _ in range(N_mult):
         # Sample only over combinatins of both
         # for (n_temp, n_times) in factorize_reduced(effort):
-        for (n_temp, n_times) in iter.product(range(2, effort), range(2, effort)):
+        for (n_temp, n_times) in iter.product(range(effort_low, effort), range(effort_low, effort)):
             temperatures = np.random.choice(temp_total, n_temp, replace=False)
-            times = np.sort(np.random.choice(np.linspace(times_low, times_high, n_times_max), n_times, replace=False))
+            times = np.array([np.sort(np.random.choice(np.linspace(times_low, times_high, n_times_max), n_times, replace=False)) for _ in range(len(temperatures))])
             combinations.append((times, [temperatures], P, Const))
 
     # Begin optimization scheme
@@ -165,30 +172,39 @@ if __name__ == "__main__":
         # Calculate new results
         p = mp.Pool(N_parallel)
         # fischer_results will have entries of the form
-        # (obs, sample_times, P, Q_arr, Const, Y0)
+        # (obs, times, P, Q_arr, Const, Y0)
         fischer_results = p.starmap(calculate_Fischer_determinant, zip(combinations, iter.repeat(pool_model), iter.repeat(n0), iter.repeat(jacobi), iter.repeat(convert_S_matrix_to_determinant)))
 
         # Do not optimize further if we are in the last run
         if opt_run != N_opt-1:
             # Delete old combinations
             combinations.clear()
-            for (n_temp, n_times) in iter.product(range(2, effort), range(2, effort)):
+            for (n_temp, n_times) in iter.product(range(effort_low, effort), range(effort_low, effort)):
                 # First sort fischer_results with defined sorting key
-                fis = filter(lambda x: len(x[1])==n_times and len(x[3][0])==n_temp, fischer_results)
+                fis = filter(lambda x: x[1].shape[-1]==n_times and len(x[3][0])==n_temp, fischer_results)
                 fis = sorted(fis, key=sorting_key, reverse=True)
                 # Pick new values from previous best ones
                 for best in fis[:N_best]:
-                    (det, sample_times, P, Q_arr, Const, Y0) = best
+                    (det, times, P, Q_arr, Const, Y0) = best
                     # Also depend old result in case its better
-                    combinations.append((sample_times, Q_arr, P, Const))
+                    combinations.append((times, Q_arr, P, Const))
                     # Now spawn new results via next neighbors of current results
                     for _ in range(0, N_spawn):
-                        times_new = np.sort(np.array([np.random.choice([max(times_low, t-dtimes), t, min(times_high, t+dtimes)]) for t in sample_times]))
-                        temps_new = np.array([np.random.choice([max(temp_low, T-dtemp), T, min(temp_high, T+dtemp)]) for T in Q_arr[0]])
+                        temps_new = np.array(
+                            [np.random.choice([max(temp_low, T-dtemp), T, min(temp_high, T+dtemp)]) for T in Q_arr[0]]
+                        )
+                        times_new = np.array(
+                            [
+                                np.sort(np.array([np.random.choice(
+                                    [max(times_low, t-dtimes), t, min(times_high, t+dtimes)]
+                                ) for t in times[i]]))
+                                for i in range(len(Q_arr[0]))
+                            ]
+                        )
                         combinations.append((times_new, [temps_new], P, Const))
     
     print(print_line.format(time.time()-start_time, opt_run+1), "done")
 
-    make_nice_plot(fischer_results, effort)
+    make_nice_plot(fischer_results)
 
     make_convergence_plot(fischer_results, effort)
