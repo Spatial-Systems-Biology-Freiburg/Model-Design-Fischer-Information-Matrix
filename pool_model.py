@@ -101,7 +101,7 @@ def make_nice_plot(fischer_results, effort):
     ax.set_title("Weighted Final Results")
     ax.set_xlabel("#Time Steps")
     ax.set_ylabel("#Temperature Values")
-    fig.savefig("Time-Temperature-2D-Hist.png")
+    fig.savefig("plots/pool_model-Time-Temperature-2D-Hist.png")
     fig.clf()
 
 

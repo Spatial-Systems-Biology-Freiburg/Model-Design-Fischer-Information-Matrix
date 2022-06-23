@@ -104,7 +104,7 @@ def make_nice_plots(fischer_results, N_best=5):
     ax1[0].set_title("First "+ str(N_best) + " Winners")
     fig1.tight_layout()
     fig1.subplots_adjust(hspace=.0)
-    fig1.savefig("Winners_current.png")
+    fig1.savefig("plots/growth_model-Winners_current.png")
     fig1.clf()
 
     fig2, ax2 = plt.subplots(1)
@@ -113,7 +113,7 @@ def make_nice_plots(fischer_results, N_best=5):
     ax2.set_xlabel("Number of time steps sampled")
     ax2.set_ylabel("Determinant Value")
     ax2.legend()
-    fig2.savefig("Success_N_times.png")
+    fig2.savefig("plots/growth_model-Success_N_times.png")
 
 
 def save_to_files(fischer_results, N_best=5):
