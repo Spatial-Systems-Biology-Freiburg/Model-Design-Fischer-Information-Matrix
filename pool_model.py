@@ -75,14 +75,16 @@ def convert_S_matrix_to_determinant(S):
     return det
 
 
-def calculate_Fischer_determinant(combinations, ODE_func, Y0, jacobian):
+def calculate_Fischer_determinant(combinations, ODE_func, Y0, jacobian, observable):
     sample_times, Q_arr, P, Const = combinations
     S = get_S_matrix(ODE_func, Y0, sample_times, Q_arr, P, Const, jacobian)
-    det = convert_S_matrix_to_determinant(S)
-    return det, sample_times, P, Q_arr, Const, Y0
+    obs = observable(S)
+    return obs, sample_times, P, Q_arr, Const, Y0
 
 
 def sorting_key(x):
+    '''Contents of x are typically results of calculate_Fischer_determinant (see above)
+    Thus x = (obs, sample_times, P, Q_arr, Const, Y0)'''
     norm = max(len(x[2]) * x[1].size * np.prod([len(x) for x in x[3]]), 1.0)
     return x[0]/norm
 
@@ -138,7 +140,6 @@ if __name__ == "__main__":
 
     # How often should we choose a sample with same number of temperatures and times
     N_mult = 10
-
     # How many optimization runs should we do
     N_opt = 20
     # How many best results should be propagated forward?
@@ -146,7 +147,7 @@ if __name__ == "__main__":
     # How many new combinations should an old result spawn?
     N_spawn = 10
     # How many processes will be run in parallel
-    N_parallel = 40
+    N_parallel = 44
 
     # Begin sampling of time and temperature values
     combinations = []
@@ -169,7 +170,9 @@ if __name__ == "__main__":
         print(print_line.format(time.time()-start_time, opt_run+1), end="\r")
         # Calculate new results
         p = mp.Pool(N_parallel)
-        fischer_results = p.starmap(calculate_Fischer_determinant, zip(combinations, iter.repeat(pool_model), iter.repeat(n0), iter.repeat(jacobi)))
+        # fischer_results will have entries of the form
+        # (obs, sample_times, P, Q_arr, Const, Y0)
+        fischer_results = p.starmap(calculate_Fischer_determinant, zip(combinations, iter.repeat(pool_model), iter.repeat(n0), iter.repeat(jacobi), iter.repeat(convert_S_matrix_to_determinant)))
 
         # Do not optimize further if we are in the last run
         if opt_run != N_opt-1:
