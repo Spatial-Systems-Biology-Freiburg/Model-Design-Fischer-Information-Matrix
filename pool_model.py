@@ -12,14 +12,14 @@ import time
 
 def pool_model(n, t, Q, P, Const):
     (a, b) = P
-    (Temp, H) = Q
+    (Temp,) = Q
     (n0, n_max) = Const
     return (a*Temp)*(n-n0*np.exp(-b*Temp*t))*(1-n/n_max)
 
 
 def jacobi(n, t, Q, P, Const):
     (a, b) = P
-    (Temp, H) = Q
+    (Temp,) = Q
     (n0, n_max) = Const
     return np.array([
         (  Temp) * (n -        n0 * np.exp(-b*Temp*t))*(1-n/n_max),
@@ -145,7 +145,7 @@ if __name__ == "__main__":
 
     # Begin sampling of time and temperature values
     combinations = []
-    humidity = np.linspace(1.0, 2.0, 4)
+    
     # Iterate over every combination for total effort eg. for effort=16 we get combinations (2,8), (4,4), (8,2)
     # We exclude the "boundary" cases of (1,16) and (16,1)
     # Generate pairs of temperature and time and put everything in a large list
@@ -155,7 +155,7 @@ if __name__ == "__main__":
         for (n_temp, n_times) in iter.product(range(2, effort), range(2, effort)):
             temperatures = np.random.choice(temp_total, n_temp, replace=False)
             times = np.sort(np.random.choice(np.linspace(times_low, times_high, n_times_max), n_times, replace=False))
-            combinations.append((times, [temperatures, humidity], P, Const))
+            combinations.append((times, [temperatures], P, Const))
 
     # Begin optimization scheme
     start_time = time.time()
@@ -185,7 +185,7 @@ if __name__ == "__main__":
                     for _ in range(0, N_spawn):
                         times_new = np.sort(np.array([np.random.choice([max(times_low, t-dtimes), t, min(times_high, t+dtimes)]) for t in sample_times]))
                         temps_new = np.array([np.random.choice([max(temp_low, T-dtemp), T, min(temp_high, T+dtemp)]) for T in Q_arr[0]])
-                        combinations.append((times_new, [temps_new, humidity], P, Const))
+                        combinations.append((times_new, [temps_new], P, Const))
     
     print(print_line.format(time.time()-start_time, opt_run+1), "done")
 
