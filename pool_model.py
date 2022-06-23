@@ -86,7 +86,7 @@ def sorting_key(x):
     return x[0]/norm
 
 
-def make_nice_plot(fischer_results):
+def make_nice_plot(fischer_results, sorting_key):
     # Remember that entries in the fischer matrix have the form
     # fischer_results[0] = (obs, times, P, Q_arr, Const, Y0)
     fig, ax = plt.subplots()
@@ -113,12 +113,41 @@ def make_convergence_plot(fischer_results, effort):
     fig.clf()
 
 
+def get_best_fischer_results(n_time_temp, fischer_results, sorting_key, N_best):
+    (n_times, n_temp) = n_time_temp
+    # TODO use partial sort or some other efficient alrogithm to obtain O(n) scaling behvaiour
+    # for best result retrieval
+    return sorted(filter(lambda x: x[1].shape[-1]==n_times and len(x[3][0])==n_temp, fischer_results), key=sorting_key, reverse=True)[:N_best]
+
+
+def get_new_combinations_from_best(best, N_spawn, temp_low, temp_high, dtemp, times_low, times_high, dtimes):
+    combinations = []
+    for (det, times, P, Q_arr, Const, Y0) in best:
+        # Also depend old result in case its better
+        combinations.append((times, Q_arr, P, Const))
+        # Now spawn new results via next neighbors of current results
+        for _ in range(0, N_spawn):
+            temps_new = np.array(
+                [np.random.choice([max(temp_low, T-dtemp), T, min(temp_high, T+dtemp)]) for T in Q_arr[0]]
+            )
+            times_new = np.array(
+                [
+                    np.sort(np.array([np.random.choice(
+                        [max(times_low, t-dtimes), t, min(times_high, t+dtimes)]
+                    ) for t in times[i]]))
+                    for i in range(len(Q_arr[0]))
+                ]
+            )
+            combinations.append((times_new, [temps_new], P, Const))
+    return combinations
+
+
 if __name__ == "__main__":
     # Define constants for the simulation duration
     n0 = 20.0
     n_max = 2000.0
     effort_low = 2
-    effort = 2**3
+    effort = 2**4
     Const = (n0, n_max)
 
     # Define initial parameter guesses
@@ -140,13 +169,13 @@ if __name__ == "__main__":
     times_total = np.linspace(times_low, times_high, n_times_max)
 
     # How often should we choose a sample with same number of temperatures and times
-    N_mult = 10
+    N_mult = 50
     # How many optimization runs should we do
     N_opt = 20
     # How many best results should be propagated forward?
-    N_best = 5
+    N_best = 6
     # How many new combinations should an old result spawn?
-    N_spawn = 10
+    N_spawn = 20
     # How many processes will be run in parallel
     N_parallel = 44
 
@@ -164,47 +193,50 @@ if __name__ == "__main__":
             times = np.array([np.sort(np.random.choice(np.linspace(times_low, times_high, n_times_max), n_times, replace=False)) for _ in range(len(temperatures))])
             combinations.append((times, [temperatures], P, Const))
 
+    # Create pool we will later use
+    p = mp.Pool(N_parallel)
+    
     # Begin optimization scheme
     start_time = time.time()
     print_line = "[Time: {:> 8.3f} Run: {:> " +str(len(str(N_opt))) + "}] Optimizing"
     for opt_run in range(0, N_opt):
         print(print_line.format(time.time()-start_time, opt_run+1), end="\r")
         # Calculate new results
-        p = mp.Pool(N_parallel)
         # fischer_results will have entries of the form
         # (obs, times, P, Q_arr, Const, Y0)
-        fischer_results = p.starmap(calculate_Fischer_determinant, zip(combinations, iter.repeat(pool_model), iter.repeat(n0), iter.repeat(jacobi), iter.repeat(convert_S_matrix_to_determinant)))
+        fischer_results = p.starmap(calculate_Fischer_determinant, zip(
+            combinations,
+            iter.repeat(pool_model),
+            iter.repeat(n0),
+            iter.repeat(jacobi),
+            iter.repeat(convert_S_matrix_to_determinant)
+        ))
 
         # Do not optimize further if we are in the last run
         if opt_run != N_opt-1:
             # Delete old combinations
             combinations.clear()
-            for (n_temp, n_times) in iter.product(range(effort_low, effort), range(effort_low, effort)):
-                # First sort fischer_results with defined sorting key
-                fis = filter(lambda x: x[1].shape[-1]==n_times and len(x[3][0])==n_temp, fischer_results)
-                fis = sorted(fis, key=sorting_key, reverse=True)
-                # Pick new values from previous best ones
-                for best in fis[:N_best]:
-                    (det, times, P, Q_arr, Const, Y0) = best
-                    # Also depend old result in case its better
-                    combinations.append((times, Q_arr, P, Const))
-                    # Now spawn new results via next neighbors of current results
-                    for _ in range(0, N_spawn):
-                        temps_new = np.array(
-                            [np.random.choice([max(temp_low, T-dtemp), T, min(temp_high, T+dtemp)]) for T in Q_arr[0]]
-                        )
-                        times_new = np.array(
-                            [
-                                np.sort(np.array([np.random.choice(
-                                    [max(times_low, t-dtimes), t, min(times_high, t+dtimes)]
-                                ) for t in times[i]]))
-                                for i in range(len(Q_arr[0]))
-                            ]
-                        )
-                        combinations.append((times_new, [temps_new], P, Const))
+            fisses = p.starmap(get_best_fischer_results, zip(
+                    iter.product(range(effort_low, effort), range(effort_low, effort)),
+                    iter.repeat(fischer_results),
+                    iter.repeat(sorting_key),
+                    iter.repeat(N_best)
+            ), chunksize=100)
+            # Calculate new combinations parallelized
+            combinations = p.starmap(get_new_combinations_from_best, zip(
+                fisses,
+                iter.repeat(N_spawn),
+                iter.repeat(temp_low),
+                iter.repeat(temp_high),
+                iter.repeat(dtemp),
+                iter.repeat(times_low),
+                iter.repeat(times_high),
+                iter.repeat(dtimes)
+            ))
+            combinations = [x for comb_list in combinations for x in comb_list]
     
     print(print_line.format(time.time()-start_time, opt_run+1), "done")
 
-    make_nice_plot(fischer_results)
+    make_nice_plot(fischer_results, sorting_key)
 
     make_convergence_plot(fischer_results, effort)
