@@ -11,19 +11,20 @@ import time
 
 
 def pool_model(n, t, Q, P, Const):
-    (a, b) = P
+    (a, b, c) = P
     (Temp,) = Q
     (n0, n_max) = Const
-    return (a*Temp)*(n-n0*np.exp(-b*Temp*t))*(1-n/n_max)
+    return (a*Temp + c)*(n-n0*np.exp(-b*Temp*t))*(1-n/n_max)
 
 
 def jacobi(n, t, Q, P, Const):
-    (a, b) = P
+    (a, b, c) = P
     (Temp,) = Q
     (n0, n_max) = Const
     return np.array([
         (  Temp) * (n -        n0 * np.exp(-b*Temp*t))*(1-n/n_max),
-        (a*Temp) * (    n0*t*Temp * np.exp(-b*Temp*t))*(1-n/n_max)
+        (a*Temp) * (    n0*t*Temp * np.exp(-b*Temp*t))*(1-n/n_max),
+        (     1) * (n -        n0 * np.exp(-b*Temp*t))*(1-n/n_max)
     ])
 
 
@@ -57,7 +58,7 @@ def get_S_matrix(ODE_func, n0, times, Q_arr, P, Const, jacobian):
 
         # Calculate the S-Matrix with the supplied jacobian
         S[(slice(None), slice(None)) + index] = jacobian(r, t, Q, P, Const)
-    
+
     # Reshape to 2D Form (len(P),:)
     S = S.reshape((len(P),np.prod(S.shape[1:])))
     return S
@@ -66,7 +67,7 @@ def get_S_matrix(ODE_func, n0, times, Q_arr, P, Const, jacobian):
 def convert_S_matrix_to_determinant(S):
     # Calculate Fisher Matrix
     F = S.dot(S.T)
-    
+
     # Calculate Determinant
     det = np.linalg.det(F)
     return det
@@ -90,11 +91,11 @@ def make_nice_plot(fischer_results, sorting_key):
     # Remember that entries in the fischer matrix have the form
     # fischer_results[0] = (obs, times, P, Q_arr, Const, Y0)
     fig, ax = plt.subplots()
-    
+
     x = [f[1].shape[-1] for f in fischer_results]
     y = [len(f[3][0]) for f in fischer_results]
     weights = [sorting_key(f) for f in fischer_results]
-    
+
     b = (
         np.arange(min(x)-0.5, max(x)+1.5, 1.0),
         np.arange(min(y)-0.5, max(y)+1.5, 1.0)
@@ -109,7 +110,7 @@ def make_nice_plot(fischer_results, sorting_key):
 
 def make_convergence_plot(fischer_results, effort):
     fig, ax = plt.subplots()
-    
+
     fig.clf()
 
 
@@ -144,29 +145,30 @@ def get_new_combinations_from_best(best, N_spawn, temp_low, temp_high, dtemp, ti
 
 if __name__ == "__main__":
     # Define constants for the simulation duration
-    n0 = 20.0
-    n_max = 2000.0
+    n0 = 0.25
+    n_max = 2e4
     effort_low = 2
     effort = 2**4
     Const = (n0, n_max)
 
     # Define initial parameter guesses
-    a = 1.0
-    b = 2.0
-    P = (a, b)
+    a = 0.065
+    b = 0.01
+    c = 1.31
+    P = (a, b, c)
 
     # Define bounds for sampling
     temp_low = 2.0
-    temp_high = 13.0
-    n_temp_max = effort+1
-    dtemp = (temp_high-temp_low)/(n_temp_max-1)
-    temp_total = np.linspace(temp_low, temp_high, n_temp_max)
+    temp_high = 16.0
+    dtemp = 2.0
+    n_temp_max = int((temp_high - temp_low) / dtemp + 1) # effort+1
+    temp_total = np.linspace(temp_low, temp_low + dtemp * n_temp_max , n_temp_max)
 
     times_low = 0.0
-    times_high = 1.0
-    n_times_max = effort+1
-    dtimes = (times_high-times_low)/(n_times_max-1)
-    times_total = np.linspace(times_low, times_high, n_times_max)
+    times_high = 20.0
+    dtimes = 1.0
+    n_times_max = int((times_high-times_low) / dtimes + 1) # effort+1
+    times_total = np.linspace(times_low, times_low + dtimes * n_times_max, n_times_max)
 
     # How often should we choose a sample with same number of temperatures and times
     N_mult = 50
@@ -181,21 +183,21 @@ if __name__ == "__main__":
 
     # Begin sampling of time and temperature values
     combinations = []
-    
+
     # Iterate over every combination for total effort eg. for effort=16 we get combinations (2,8), (4,4), (8,2)
     # We exclude the "boundary" cases of (1,16) and (16,1)
     # Generate pairs of temperature and time and put everything in a large list
     for _ in range(N_mult):
         # Sample only over combinatins of both
         # for (n_temp, n_times) in factorize_reduced(effort):
-        for (n_temp, n_times) in iter.product(range(effort_low, effort), range(effort_low, effort)):
+        for (n_temp, n_times) in iter.product(range(effort_low, min(effort, n_temp_max)), range(effort_low, min(effort, n_times_max))):
             temperatures = np.random.choice(temp_total, n_temp, replace=False)
-            times = np.array([np.sort(np.random.choice(np.linspace(times_low, times_high, n_times_max), n_times, replace=False)) for _ in range(len(temperatures))])
+            times = np.array([np.sort(np.random.choice(times_total, n_times, replace=False)) for _ in range(len(temperatures))])
             combinations.append((times, [temperatures], P, Const))
 
     # Create pool we will later use
     p = mp.Pool(N_parallel)
-    
+
     # Begin optimization scheme
     start_time = time.time()
     print_line = "[Time: {:> 8.3f} Run: {:> " +str(len(str(N_opt))) + "}] Optimizing"
@@ -234,7 +236,7 @@ if __name__ == "__main__":
                 iter.repeat(dtimes)
             ))
             combinations = [x for comb_list in combinations for x in comb_list]
-    
+
     print(print_line.format(time.time()-start_time, opt_run+1), "done")
 
     make_nice_plot(fischer_results, sorting_key)
