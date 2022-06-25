@@ -8,6 +8,7 @@ import random
 import itertools as iter
 import multiprocessing as mp
 import time
+import json
 
 
 def pool_model(n, t, Q, P, Const):
@@ -128,9 +129,10 @@ def get_new_combinations_from_best(best, N_spawn, temp_low, temp_high, dtemp, ti
         combinations.append((times, Q_arr, P, Const))
         # Now spawn new results via next neighbors of current results
         for _ in range(0, N_spawn):
-            temps_new = np.array(
-                [np.random.choice([max(temp_low, T-dtemp), T, min(temp_high, T+dtemp)]) for T in Q_arr[0]]
-            )
+            temps_new = Q_arr[0]
+            #temps_new = np.array(
+             #   [np.random.choice([max(temp_low, T-dtemp), T, min(temp_high, T+dtemp)]) for T in Q_arr[0]]
+            #)
             times_new = np.array(
                 [
                     np.sort(np.array([np.random.choice(
@@ -162,13 +164,13 @@ if __name__ == "__main__":
     temp_high = 16.0
     dtemp = 2.0
     n_temp_max = int((temp_high - temp_low) / dtemp + 1) # effort+1
-    temp_total = np.linspace(temp_low, temp_low + dtemp * n_temp_max , n_temp_max)
+    temp_total = np.linspace(temp_low, temp_low + dtemp * (n_temp_max - 1) , n_temp_max)
 
     times_low = 0.0
     times_high = 20.0
     dtimes = 1.0
     n_times_max = int((times_high-times_low) / dtimes + 1) # effort+1
-    times_total = np.linspace(times_low, times_low + dtimes * n_times_max, n_times_max)
+    times_total = np.linspace(times_low, times_low + dtimes * (n_times_max - 1), n_times_max)
 
     # How often should we choose a sample with same number of temperatures and times
     N_mult = 50
@@ -179,7 +181,7 @@ if __name__ == "__main__":
     # How many new combinations should an old result spawn?
     N_spawn = 20
     # How many processes will be run in parallel
-    N_parallel = 44
+    N_parallel = 2
 
     # Begin sampling of time and temperature values
     combinations = []
@@ -190,8 +192,9 @@ if __name__ == "__main__":
     for _ in range(N_mult):
         # Sample only over combinatins of both
         # for (n_temp, n_times) in factorize_reduced(effort):
-        for (n_temp, n_times) in iter.product(range(effort_low, min(effort, n_temp_max)), range(effort_low, min(effort, n_times_max))):
-            temperatures = np.random.choice(temp_total, n_temp, replace=False)
+        for (n_times, n_temp) in iter.product(range(effort_low, min(effort, n_times_max)), range(effort_low, min(effort, n_temp_max))):
+            #temperatures = np.random.choice(temp_total, n_temp, replace=False)
+            temperatures = np.linspace(temp_low, temp_low + dtemp * (n_temp - 1) , n_temp)
             times = np.array([np.sort(np.random.choice(times_total, n_times, replace=False)) for _ in range(len(temperatures))])
             combinations.append((times, [temperatures], P, Const))
 
@@ -219,7 +222,7 @@ if __name__ == "__main__":
             # Delete old combinations
             combinations.clear()
             fisses = p.starmap(get_best_fischer_results, zip(
-                    iter.product(range(effort_low, effort), range(effort_low, effort)),
+                    iter.product(range(effort_low, min(effort, n_times_max)), range(effort_low, min(effort, n_temp_max))),
                     iter.repeat(fischer_results),
                     iter.repeat(sorting_key),
                     iter.repeat(N_best)
@@ -236,6 +239,13 @@ if __name__ == "__main__":
                 iter.repeat(dtimes)
             ))
             combinations = [x for comb_list in combinations for x in comb_list]
+
+    fisses = p.starmap(get_best_fischer_results, zip(
+        iter.product(range(effort_low, min(effort, n_times_max)), range(effort_low, min(effort, n_temp_max))),
+        iter.repeat(fischer_results),
+        iter.repeat(sorting_key),
+        iter.repeat(1)
+    ), chunksize=100)
 
     print(print_line.format(time.time()-start_time, opt_run+1), "done")
 
