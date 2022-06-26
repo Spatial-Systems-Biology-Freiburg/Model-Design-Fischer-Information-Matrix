@@ -115,6 +115,31 @@ def make_convergence_plot(fischer_results, effort):
     fig.clf()
 
 
+def make_plots(fisses, sorting_key):
+                                                            # sorting_key(f[0])
+    new_comb = sorted([(f[0][1].shape[-1] * len(f[0][3][0]), f[0][0]) for f in fisses], key=lambda l:l[0])
+    final_comb = []
+    for i in range (0, len(new_comb)):
+        if i == 0 or new_comb[i][0] != new_comb[i - 1][0]:
+            final_comb.append(new_comb[i])
+        else:
+            final_comb[-1] = (new_comb[i][0], max(new_comb[i][1], new_comb[i - 1][1]))
+            
+
+    x = [f[0] for f in final_comb]
+    y = [f[1] for f in final_comb]
+
+    fig, ax = plt.subplots()
+    ax.scatter(x, y)
+    ax.set_yscale('log')
+    ax.set_xlabel('# of measurements')
+    ax.set_ylabel('det(F)')
+    #ax.set_xlim(2, 40)
+    fig.savefig("plots/determinant_FIM_vs_num_measurements.png")
+    plt.show()
+
+
+
 def get_best_fischer_results(n_time_temp, fischer_results, sorting_key, N_best):
     (n_times, n_temp) = n_time_temp
     # TODO use partial sort or some other efficient alrogithm to obtain O(n) scaling behvaiour
@@ -181,7 +206,7 @@ if __name__ == "__main__":
     # How many new combinations should an old result spawn?
     N_spawn = 20
     # How many processes will be run in parallel
-    N_parallel = 2
+    N_parallel = 44
 
     # Begin sampling of time and temperature values
     combinations = []
@@ -252,3 +277,5 @@ if __name__ == "__main__":
     make_nice_plot(fischer_results, sorting_key)
 
     make_convergence_plot(fischer_results, effort)
+    
+    make_plots(fisses, sorting_key)
