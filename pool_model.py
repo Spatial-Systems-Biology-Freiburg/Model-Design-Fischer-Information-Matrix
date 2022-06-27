@@ -9,6 +9,7 @@ import itertools as iter
 import multiprocessing as mp
 import time
 import json
+import heapq
 
 
 def pool_model(n, t, Q, P, Const):
@@ -140,11 +141,17 @@ def make_plots(fisses, sorting_key):
 
 
 
-def get_best_fischer_results(n_time_temp, fischer_results, sorting_key, N_best):
+def get_best_fischer_results(n_time_temp, fischer_results, sorting_key, N_best, chunksize=400):
     (n_times, n_temp) = n_time_temp
-    # TODO use partial sort or some other efficient alrogithm to obtain O(n) scaling behvaiour
-    # for best result retrieval
-    return sorted(filter(lambda x: x[1].shape[-1]==n_times and len(x[3][0])==n_temp, fischer_results), key=sorting_key, reverse=True)[:N_best]
+    ret = []
+    for x in fischer_results:
+        if x[1].shape[-1]==n_times and len(x[3][0])==n_temp:
+            if len(ret) > 0:
+                if sorting_key(x) > sorting_key(max(ret, key=sorting_key)):
+                    heapq.heapreplace(ret, x)
+            else:
+                heapq.heappush(ret, x)
+    return ret
 
 
 def get_new_combinations_from_best(best, N_spawn, temp_low, temp_high, dtemp, times_low, times_high, dtimes):
