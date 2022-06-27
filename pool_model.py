@@ -62,6 +62,7 @@ def get_S_matrix(ODE_func, n0, times, Q_arr, P, Const, jacobian):
 
     # Reshape to 2D Form (len(P),:)
     S = S.reshape((len(P),np.prod(S.shape[1:])))
+    #print(np.linalg.matrix_rank(S))
     return S
 
 
@@ -116,7 +117,7 @@ def make_convergence_plot(fischer_results, effort):
 
 
 def make_plots(fisses, sorting_key):
-                                                            # sorting_key(f[0])
+                                                           # sorting_key(f[0])
     new_comb = sorted([(f[0][1].shape[-1] * len(f[0][3][0]), f[0][0]) for f in fisses], key=lambda l:l[0])
     final_comb = []
     for i in range (0, len(new_comb)):
@@ -124,7 +125,6 @@ def make_plots(fisses, sorting_key):
             final_comb.append(new_comb[i])
         else:
             final_comb[-1] = (new_comb[i][0], max(new_comb[i][1], new_comb[i - 1][1]))
-            
 
     x = [f[0] for f in final_comb]
     y = [f[1] for f in final_comb]
@@ -134,10 +134,22 @@ def make_plots(fisses, sorting_key):
     ax.set_yscale('log')
     ax.set_xlabel('# of measurements')
     ax.set_ylabel('det(F)')
-    #ax.set_xlim(2, 40)
     fig.savefig("plots/determinant_FIM_vs_num_measurements.png")
     plt.show()
 
+
+def write_in_file(fisses, num_iter, crit_name):
+    P = fisses[0][0][2]
+    Const = fisses[0][0][4]
+    filename = f"Experimental_design_iter_{num_iter}_crit_{crit_name}_{P[0]:.3f}_b_{P[1]:.3f}_c_{P[2]:.3f}_n0_{Const[0]}_nmax_{Const[1]}"
+    path = 'results'
+    filenamepath ='./' + path + '/' + filename + '.json'
+    new_comb = sorted([(f[0][1].shape[-1] * len(f[0][3][0]), f[0][0], f[0][1].shape[-1], len(f[0][3][0]), [list(ff) for ff in (f[0][1])], list(f[0][3][0])) for f in fisses], key=lambda l:l[0])
+    with open(filenamepath, "w") as file:
+        for c in new_comb:
+            opt_design_dict = {'eff': c[0], 'obs': c[1], 'n_times': c[2], 'n_temp': c[3], 'times': c[4], 'temp': c[5]}
+            json.dump(opt_design_dict, file, indent=1)
+    file.close()
 
 
 def get_best_fischer_results(n_time_temp, fischer_results, sorting_key, N_best):
@@ -277,5 +289,6 @@ if __name__ == "__main__":
     make_nice_plot(fischer_results, sorting_key)
 
     make_convergence_plot(fischer_results, effort)
-    
+
     make_plots(fisses, sorting_key)
+    write_in_file(fisses, 1, 'D')
