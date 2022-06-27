@@ -86,7 +86,11 @@ def sorting_key(x):
     '''Contents of x are typically results of calculate_Fischer_determinant (see above)
     Thus x = (obs, times, P, Q_arr, Const, Y0)'''
     norm = max(len(x[2]) * x[1].size * np.prod([len(x) for x in x[3]]), 1.0)
-    return x[0]/norm
+    seperate_times = 1.0
+    for t in x[1]:
+        if len(np.unique(t)) != len(x[1]):
+            seperate_times = 0.0
+    return x[0] * seperate_times /norm
 
 
 def make_nice_plot(fischer_results, sorting_key):
@@ -118,7 +122,7 @@ def make_convergence_plot(fischer_results, effort):
 
 def make_plots(fisses, sorting_key):
                                                            # sorting_key(f[0])
-    new_comb = sorted([(f[0][1].shape[-1] * len(f[0][3][0]), f[0][0]) for f in fisses], key=lambda l:l[0])
+    new_comb = sorted([(f[0][1].shape[-1] * len(f[0][3][0]), sorting_key(f[0])) for f in fisses], key=lambda l:l[0])
     final_comb = []
     for i in range (0, len(new_comb)):
         if i == 0 or new_comb[i][0] != new_comb[i - 1][0]:
@@ -229,7 +233,7 @@ if __name__ == "__main__":
     for _ in range(N_mult):
         # Sample only over combinatins of both
         # for (n_temp, n_times) in factorize_reduced(effort):
-        for (n_times, n_temp) in iter.product(range(effort_low, min(effort, n_times_max)), range(effort_low, min(effort, n_temp_max))):
+        for (n_times, n_temp) in iter.product(range(effort_low, min(effort, n_times_max - 2)), range(effort_low, min(effort, n_temp_max))):
             #temperatures = np.random.choice(temp_total, n_temp, replace=False)
             temperatures = np.linspace(temp_low, temp_low + dtemp * (n_temp - 1) , n_temp)
             times = np.array([np.sort(np.random.choice(times_total, n_times, replace=False)) for _ in range(len(temperatures))])
@@ -259,7 +263,7 @@ if __name__ == "__main__":
             # Delete old combinations
             combinations.clear()
             fisses = p.starmap(get_best_fischer_results, zip(
-                    iter.product(range(effort_low, min(effort, n_times_max)), range(effort_low, min(effort, n_temp_max))),
+                    iter.product(range(effort_low, min(effort, n_times_max - 2)), range(effort_low, min(effort, n_temp_max))),
                     iter.repeat(fischer_results),
                     iter.repeat(sorting_key),
                     iter.repeat(N_best)
@@ -278,7 +282,7 @@ if __name__ == "__main__":
             combinations = [x for comb_list in combinations for x in comb_list]
 
     fisses = p.starmap(get_best_fischer_results, zip(
-        iter.product(range(effort_low, min(effort, n_times_max)), range(effort_low, min(effort, n_temp_max))),
+        iter.product(range(effort_low, min(effort, n_times_max - 2)), range(effort_low, min(effort, n_temp_max))),
         iter.repeat(fischer_results),
         iter.repeat(sorting_key),
         iter.repeat(1)
