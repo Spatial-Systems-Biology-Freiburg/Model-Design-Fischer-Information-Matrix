@@ -107,10 +107,23 @@ def make_nice_plot(fischer_results, sorting_key):
         np.arange(min(x)-0.5, max(x)+1.5, 1.0),
         np.arange(min(y)-0.5, max(y)+1.5, 1.0)
     )
+
+    n_measurenents = [20, 40, 60, 80, 100, 120]
+    x2 = np.linspace(1, 21, 21)
+    y_of_eff = [[eff/xx for xx in x2] for eff in n_measurenents]
+
     ax.hist2d(x, y, bins=b, weights=weights, cmap="viridis")
-    ax.set_title("Weighted Final Results")
-    ax.set_xlabel("#Time Steps")
-    ax.set_ylabel("#Temperature Values")
+    for y2 in y_of_eff:
+        ax.plot(x2, y2, linewidth=2, color='r')
+    ax.text(4.1, 5, 'M = 20', fontsize=13, color='r')
+    ax.text(6, 7, '40', fontsize=13, color='r')
+    ax.text(7.8, 8, '60', fontsize=13, color='r')
+    ax.text(9.3, 8.9, '80', fontsize=13, color='r')
+    ax.text(10.8, 9.5, '100', fontsize=13, color='r')
+    ax.text(12, 10.3, '120', fontsize=13, color='r')
+    ax.set_title("Weighted Final Results", fontsize=13)
+    ax.set_xlabel("#Time Steps", fontsize=13)
+    ax.set_ylabel("#Temperature Values", fontsize=13)
     fig.savefig("plots/pool_model-Time-Temperature-2D-Hist.png")
     fig.clf()
 
@@ -137,8 +150,9 @@ def make_plots(fisses, sorting_key):
     fig, ax = plt.subplots()
     ax.scatter(x, y)
     ax.set_yscale('log')
-    ax.set_xlabel('# of measurements')
-    ax.set_ylabel('det(F)')
+    ax.set_xlabel('# of measurements', fontsize=15)
+    ax.set_ylabel('det(F)', fontsize=15)
+    ax.tick_params(fontsize=13)
     fig.savefig("plots/determinant_FIM_vs_num_measurements.png")
     plt.show()
 
