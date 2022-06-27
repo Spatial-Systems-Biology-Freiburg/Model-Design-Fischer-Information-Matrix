@@ -86,10 +86,10 @@ def calculate_Fischer_determinant(combinations, ODE_func, Y0, jacobian, observab
 def sorting_key(x):
     '''Contents of x are typically results of calculate_Fischer_determinant (see above)
     Thus x = (obs, times, P, Q_arr, Const, Y0)'''
-    norm = max(len(x[2]) * x[1].size * np.prod([len(x) for x in x[3]]), 1.0)
+    norm = max(len(x[2]) * x[1].size, 1.0)
     seperate_times = 1.0
     for t in x[1]:
-        if len(np.unique(t)) != len(x[1]):
+        if len(np.unique(t)) != len(t) or len(np.unique(x[3][0])) != len(x[3][0]):
             seperate_times = 0.0
     return x[0] * seperate_times /norm
 
@@ -99,9 +99,9 @@ def make_nice_plot(fischer_results, sorting_key):
     # fischer_results[0] = (obs, times, P, Q_arr, Const, Y0)
     fig, ax = plt.subplots()
 
-    x = [f[1].shape[-1] for f in fischer_results]
-    y = [len(f[3][0]) for f in fischer_results]
-    weights = [sorting_key(f) for f in fischer_results]
+    x = [f[0][1].shape[-1] for f in fischer_results]
+    y = [len(f[0][3][0]) for f in fischer_results]
+    weights = [sorting_key(f[0]) for f in fischer_results]
 
     b = (
         np.arange(min(x)-0.5, max(x)+1.5, 1.0),
@@ -177,10 +177,10 @@ def get_new_combinations_from_best(best, N_spawn, temp_low, temp_high, dtemp, ti
         combinations.append((times, Q_arr, P, Const))
         # Now spawn new results via next neighbors of current results
         for _ in range(0, N_spawn):
-            temps_new = Q_arr[0]
-            #temps_new = np.array(
-             #   [np.random.choice([max(temp_low, T-dtemp), T, min(temp_high, T+dtemp)]) for T in Q_arr[0]]
-            #)
+            #temps_new = Q_arr[0]
+            temps_new = np.array(
+                [np.random.choice([max(temp_low, T-dtemp), T, min(temp_high, T+dtemp)]) for T in Q_arr[0]]
+            )
             times_new = np.array(
                 [
                     np.sort(np.array([np.random.choice(
@@ -210,7 +210,7 @@ if __name__ == "__main__":
     # Define bounds for sampling
     temp_low = 2.0
     temp_high = 16.0
-    dtemp = 2.0
+    dtemp = 1.0
     n_temp_max = int((temp_high - temp_low) / dtemp + 1) # effort+1
     temp_total = np.linspace(temp_low, temp_low + dtemp * (n_temp_max - 1) , n_temp_max)
 
@@ -240,9 +240,9 @@ if __name__ == "__main__":
     for _ in range(N_mult):
         # Sample only over combinatins of both
         # for (n_temp, n_times) in factorize_reduced(effort):
-        for (n_times, n_temp) in iter.product(range(effort_low, min(effort, n_times_max - 2)), range(effort_low, min(effort, n_temp_max))):
-            #temperatures = np.random.choice(temp_total, n_temp, replace=False)
-            temperatures = np.linspace(temp_low, temp_low + dtemp * (n_temp - 1) , n_temp)
+        for (n_times, n_temp) in iter.product(range(effort_low, min(effort, n_times_max - 2)), range(effort_low, min(effort, n_temp_max - 2))):
+            temperatures = np.random.choice(temp_total, n_temp, replace=False)
+            #temperatures = np.linspace(temp_low, temp_low + dtemp * (n_temp - 1) , n_temp)
             times = np.array([np.sort(np.random.choice(times_total, n_times, replace=False)) for _ in range(len(temperatures))])
             combinations.append((times, [temperatures], P, Const))
 
@@ -270,7 +270,7 @@ if __name__ == "__main__":
             # Delete old combinations
             combinations.clear()
             fisses = p.starmap(get_best_fischer_results, zip(
-                    iter.product(range(effort_low, min(effort, n_times_max - 2)), range(effort_low, min(effort, n_temp_max))),
+                    iter.product(range(effort_low, min(effort, n_times_max - 2)), range(effort_low, min(effort, n_temp_max - 2))),
                     iter.repeat(fischer_results),
                     iter.repeat(sorting_key),
                     iter.repeat(N_best)
@@ -289,7 +289,7 @@ if __name__ == "__main__":
             combinations = [x for comb_list in combinations for x in comb_list]
 
     fisses = p.starmap(get_best_fischer_results, zip(
-        iter.product(range(effort_low, min(effort, n_times_max - 2)), range(effort_low, min(effort, n_temp_max))),
+        iter.product(range(effort_low, min(effort, n_times_max - 2)), range(effort_low, min(effort, n_temp_max - 2))),
         iter.repeat(fischer_results),
         iter.repeat(sorting_key),
         iter.repeat(1)
@@ -297,9 +297,9 @@ if __name__ == "__main__":
 
     print(print_line.format(time.time()-start_time, opt_run+1), "done")
 
-    make_nice_plot(fischer_results, sorting_key)
+    make_nice_plot(fisses, sorting_key)
 
-    make_convergence_plot(fischer_results, effort)
+    make_convergence_plot(fisses, effort)
 
     make_plots(fisses, sorting_key)
     write_in_file(fisses, 1, 'D')
