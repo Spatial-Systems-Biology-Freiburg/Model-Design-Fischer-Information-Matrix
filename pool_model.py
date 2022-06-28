@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 
-from multiprocessing import pool
 import numpy as np
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-import random
 import itertools as iter
 import multiprocessing as mp
 import time
@@ -63,7 +61,6 @@ def get_S_matrix(ODE_func, n0, times, Q_arr, P, Const, jacobian):
 
     # Reshape to 2D Form (len(P),:)
     S = S.reshape((len(P),np.prod(S.shape[1:])))
-    #print(np.linalg.matrix_rank(S))
     return S
 
 
@@ -162,7 +159,6 @@ def make_convergence_plot(fischer_results, effort_low, effort_high, sorting_key,
 
 
 def make_plots(fisses, sorting_key):
-                                                           # sorting_key(f[0])
     new_comb = sorted([(f[0][1].shape[-1] * len(f[0][3][0]), sorting_key(f[0])) for f in fisses], key=lambda l:l[0])
     final_comb = []
     for i in range (0, len(new_comb)):
@@ -179,9 +175,9 @@ def make_plots(fisses, sorting_key):
     ax.set_yscale('log')
     ax.set_xlabel('# of measurements', fontsize=15)
     ax.set_ylabel('det(F)', fontsize=15)
-    ax.tick_params(fontsize=13)
+    # ax.tick_params(fontsize=13)
     fig.savefig("plots/determinant_FIM_vs_num_measurements.png")
-    plt.show()
+    fig.clf()
 
 
 def write_in_file(fisses, num_iter, crit_name):
