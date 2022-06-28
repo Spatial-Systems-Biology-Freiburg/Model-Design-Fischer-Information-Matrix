@@ -4,6 +4,7 @@ from multiprocessing import pool
 import numpy as np
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import random
 import itertools as iter
 import multiprocessing as mp
@@ -127,9 +128,36 @@ def make_nice_plot(fischer_results, sorting_key):
     fig.clf()
 
 
-def make_convergence_plot(fischer_results, effort):
+def make_convergence_plot(fischer_results, effort_low, effort_high, sorting_key, N_best):
+    # Intermediate step to calcualte values of grid points
+    best_grid = np.zeros(shape=(effort_high-effort_low+1, effort_high-effort_low+1))
+    for n, m in iter.product(range(effort_high-effort_low+1), range(effort_high-effort_low+1)):
+        fisses = get_best_fischer_results((effort_low + n, effort_low + m), fischer_results, sorting_key, N_best)
+        # Reminder:
+        # (obs, times, P, Q_arr, Const, Y0) = fisses[0]
+        if len(fisses) > 0:
+            best_grid[n,m] = np.average(np.array([f[0] for f in fisses]))
+            # best_grid[n,m] = fisses[0][0]
+    color_value = lambda n, k: best_grid[max(0, min(effort_high-effort_low, round(n-effort_low))), max(0, min(effort_high-effort_low, round(k/n)))]
+    # Now plot lines for efforts
     fig, ax = plt.subplots()
-
+    for k in range(effort_low, effort_high**2+1):
+        x = np.array([f[0] for f in factorize_reduced(k)])
+        x = x[x<=effort_high]
+        x = x[k/x<=effort_high]
+        if x.size >= 5:
+            x_smooth = np.linspace(x.min(), x.max())
+            y = k/x
+            y_smooth = k/x_smooth
+            cv = np.array([color_value(n, k) for n in x])
+            if cv.max()-cv.min() > 0.0:
+                size_values = 2 * (cv-cv.min())/(cv.max()-cv.min()) * mpl.rcParams['lines.markersize'] ** 2
+                ax.scatter(x, y, marker="o", s=size_values, c=cv, cmap="viridis")
+                ax.plot(x_smooth, y_smooth, c="k", linestyle=":", alpha=0.7)
+    ax.set_title("Effort lines")
+    ax.set_xlabel("#Time Measurements")
+    ax.set_ylabel("#Temp Measurements")
+    fig.savefig("plots/Effort_lines.png")
     fig.clf()
 
 
@@ -306,7 +334,7 @@ if __name__ == "__main__":
 
     make_nice_plot(fisses, sorting_key)
 
-    make_convergence_plot(fisses, effort)
+    make_convergence_plot(fischer_results, effort_low, effort, sorting_key, N_best)
 
     make_plots(fisses, sorting_key)
     write_in_file(fisses, 1, 'D')
