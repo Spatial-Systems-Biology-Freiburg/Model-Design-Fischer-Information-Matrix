@@ -180,13 +180,15 @@ def make_plots(fisses, sorting_key):
     fig.clf()
 
 
-def write_in_file(fisses, num_iter, crit_name):
+def write_in_file(fisses, num_iter, crit_name, effort_max, sorting_key):
     P = fisses[0][0][2]
     Const = fisses[0][0][4]
-    filename = f"Experimental_design_iter_{num_iter}_crit_{crit_name}_{P[0]:.3f}_b_{P[1]:.3f}_c_{P[2]:.3f}_n0_{Const[0]}_nmax_{Const[1]}"
+    filename = f"Experimental_design_iter_{num_iter}_crit_{crit_name}_a_{P[0]:.3f}_b_{P[1]:.3f}_c_{P[2]:.3f}_n0_{Const[0]}_nmax_{Const[1]}_effmax_{effort_max}"
     path = 'results'
     filenamepath ='./' + path + '/' + filename + '.json'
-    new_comb = sorted([(f[0][1].shape[-1] * len(f[0][3][0]), f[0][0], f[0][1].shape[-1], len(f[0][3][0]), [list(ff) for ff in (f[0][1])], list(f[0][3][0])) for f in fisses], key=lambda l:l[0])
+    #new_comb = sorted([(f[0][1].shape[-1] * len(f[0][3][0]), f[0][0], f[0][1].shape[-1], len(f[0][3][0]), [list(ff) for ff in (f[0][1])], list(f[0][3][0])) for f in fisses], key=lambda l:l[0])
+    new_comb = [(f[0][1].shape[-1] * len(f[0][3][0]), f[0][0], f[0][1].shape[-1], len(f[0][3][0]), [list(ff) for ff in (f[0][1])], list(f[0][3][0])) for f in fisses]
+    new_comb = sorted(filter(lambda x: x[0] <= effort_max, new_comb), key=lambda l: l[1], reverse=True)[:10]
     with open(filenamepath, "w") as file:
         for c in new_comb:
             opt_design_dict = {'eff': c[0], 'obs': c[1], 'n_times': c[2], 'n_temp': c[3], 'times': c[4], 'temp': c[5]}
@@ -230,12 +232,19 @@ if __name__ == "__main__":
     n_max = 2e4
     effort_low = 2
     effort = 2**4
+    effort_max = 20
     Const = (n0, n_max)
 
     # Define initial parameter guesses
-    a = 0.065
+    #a = 0.065
+    #b = 0.01
+    #c = 1.31
+
+    #2nd choice of parameters:
+    a = 0.0673
     b = 0.01
-    c = 1.31
+    c = 1.314
+
     P = (a, b, c)
 
     # Define bounds for sampling
@@ -333,4 +342,4 @@ if __name__ == "__main__":
     make_convergence_plot(fischer_results, effort_low, effort, sorting_key, N_best)
 
     make_plots(fisses, sorting_key)
-    write_in_file(fisses, 1, 'D')
+    write_in_file(fisses, 2, 'D', effort_max, sorting_key)
