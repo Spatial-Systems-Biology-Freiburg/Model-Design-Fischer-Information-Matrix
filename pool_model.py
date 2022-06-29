@@ -86,7 +86,6 @@ def sorting_key(x):
     '''Contents of x are typically results of calculate_Fischer_determinant (see above)
     Thus x = (obs, times, P, Q_arr, Const, Y0)'''
     norm = max(len(x[2]) * x[1].size, 1.0)
-    #norm = 1.0
     seperate_times = 1.0
     for t in x[1]:
         if len(np.unique(t)) != len(t) or len(np.unique(x[3][0])) != len(x[3][0]):
@@ -152,19 +151,18 @@ def make_plots(fisses, sorting_key):
     ax.set_yscale('log')
     ax.set_xlabel('# of measurements', fontsize=15)
     ax.set_ylabel('det(F)', fontsize=15)
+    ax.tick_params(fontsize=13)
     fig.savefig("plots/determinant_FIM_vs_num_measurements.png")
     plt.show()
 
 
-def write_in_file(fisses, num_iter, crit_name, effort_max, sorting_key):
+def write_in_file(fisses, num_iter, crit_name):
     P = fisses[0][0][2]
     Const = fisses[0][0][4]
-    filename = f"Experimental_design_iter_{num_iter}_crit_{crit_name}_a_{P[0]:.3f}_b_{P[1]:.3f}_c_{P[2]:.3f}_n0_{Const[0]}_nmax_{Const[1]}_effmax_{effort_max}"
+    filename = f"Experimental_design_iter_{num_iter}_crit_{crit_name}_{P[0]:.3f}_b_{P[1]:.3f}_c_{P[2]:.3f}_n0_{Const[0]}_nmax_{Const[1]}"
     path = 'results'
     filenamepath ='./' + path + '/' + filename + '.json'
-    #new_comb = sorted([(f[0][1].shape[-1] * len(f[0][3][0]), f[0][0], f[0][1].shape[-1], len(f[0][3][0]), [list(ff) for ff in (f[0][1])], list(f[0][3][0])) for f in fisses], key=lambda l:l[0])
-    new_comb = [(f[0][1].shape[-1] * len(f[0][3][0]), f[0][0], f[0][1].shape[-1], len(f[0][3][0]), [list(ff) for ff in (f[0][1])], list(f[0][3][0])) for f in fisses]
-    new_comb = sorted(filter(lambda x: x[0] <= effort_max, new_comb), key=lambda l: l[1], reverse=True)[:10]
+    new_comb = sorted([(f[0][1].shape[-1] * len(f[0][3][0]), f[0][0], f[0][1].shape[-1], len(f[0][3][0]), [list(ff) for ff in (f[0][1])], list(f[0][3][0])) for f in fisses], key=lambda l:l[0])
     with open(filenamepath, "w") as file:
         for c in new_comb:
             opt_design_dict = {'eff': c[0], 'obs': c[1], 'n_times': c[2], 'n_temp': c[3], 'times': c[4], 'temp': c[5]}
@@ -209,18 +207,11 @@ if __name__ == "__main__":
     effort_low = 2
     effort = 2**4
     Const = (n0, n_max)
-    effort_max = 20
 
     # Define initial parameter guesses
-    #a = 0.065
-    #b = 0.01
-    #c = 1.31
-
-    #2nd choice of parameters:
-    a = 0.0673
+    a = 0.065
     b = 0.01
-    c = 1.314
-
+    c = 1.31
     P = (a, b, c)
 
     # Define bounds for sampling
@@ -318,4 +309,4 @@ if __name__ == "__main__":
     make_convergence_plot(fisses, effort)
 
     make_plots(fisses, sorting_key)
-    write_in_file(fisses, 2, 'D', effort_max, sorting_key)
+    write_in_file(fisses, 1, 'D')
