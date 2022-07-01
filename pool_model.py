@@ -8,6 +8,7 @@ import itertools as iter
 import multiprocessing as mp
 import time
 import json
+from scipy import stats
 
 
 def pool_model(n, t, Q, P, Const):
@@ -72,6 +73,22 @@ def convert_S_matrix_to_determinant(S):
     det = np.linalg.det(F)
     return det
 
+def convert_S_matrix_to_sumeigenval(S):
+    # Calculate Fisher Matrix
+    F = S.dot(S.T)
+
+    # Calculate sum eigenvals
+    sumeigval = np.sum(np.linalg.eigvals(F))
+    return sumeigval
+
+def convert_S_matrix_to_mineigenval(S):
+    # Calculate Fisher Matrix
+    F = S.dot(S.T)
+
+    # Calculate sum eigenvals
+    mineigval = np.max(np.linalg.eigvals(F))
+    return mineigval
+
 
 def calculate_Fischer_determinant(combinations, ODE_func, Y0, jacobian, observable):
     times, Q_arr, P, Const = combinations
@@ -83,7 +100,9 @@ def calculate_Fischer_determinant(combinations, ODE_func, Y0, jacobian, observab
 def sorting_key(x):
     '''Contents of x are typically results of calculate_Fischer_determinant (see above)
     Thus x = (obs, times, P, Q_arr, Const, Y0)'''
-    norm = max(len(x[2]) * x[1].size, 1.0)
+    #norm = max(x[1].size, 1.0)**0.5
+    #norm = len(x[2]) * x[1].size
+    norm = 1.0
     seperate_times = 1.0
     for t in x[1]:
         if len(np.unique(t)) != len(t) or len(np.unique(x[3][0])) != len(x[3][0]):
@@ -179,16 +198,41 @@ def make_plots(fisses, sorting_key):
     fig.savefig("plots/determinant_FIM_vs_num_measurements.png")
     fig.clf()
 
+def make_plots_mean(fisses, sorting_key):
+    new_comb = sorted([(f[0][1].shape[-1] * len(f[0][3][0]), sorting_key(f[0])) for f in fisses], key=lambda l:l[0])
+    final_comb = [] # effort, mean_det, std_err_det
+    print(new_comb[-1][0])
+    effort_list = set([c[0] for c in new_comb])
+    for eff in effort_list:
+        #print(eff)
+        same_eff_comb = list(filter(lambda x: x[0]==eff, new_comb))
+    #    print(same_eff_comb)
+        final_comb.append([eff, np.mean(same_eff_comb, axis=0)[1], stats.sem(same_eff_comb, axis=0)[1]])
+
+    x = [f[0] for f in final_comb]
+    y = [f[1] for f in final_comb]
+    y_std = [f[2] for f in final_comb]
+
+    fig, ax = plt.subplots()
+    ax.scatter(x, y)
+    ax.errorbar(x, y, yerr=y_std, fmt = 'o')
+    ax.set_yscale('log')
+    ax.set_xlabel('# of measurements', fontsize=15)
+    ax.set_ylabel('det(F)', fontsize=15)
+        # ax.tick_params(fontsize=13)
+    fig.savefig("plots/determinant_FIM_vs_num_measurements2_mean.png")
+    fig.clf()
+
 
 def write_in_file(fisses, num_iter, crit_name, effort_max, sorting_key):
     P = fisses[0][0][2]
     Const = fisses[0][0][4]
-    filename = f"Experimental_design_iter_{num_iter}_crit_{crit_name}_a_{P[0]:.3f}_b_{P[1]:.3f}_c_{P[2]:.3f}_n0_{Const[0]}_nmax_{Const[1]}_effmax_{effort_max}"
+    filename = f"Experimental_design_iter_{num_iter}_crit_{crit_name}_a_{P[0]:.3f}_b_{P[1]:.3f}_c_{P[2]:.3f}_n0_{Const[0]}_nmax_{Const[1]}"#_effmax_{effort_max}"
     path = 'results'
     filenamepath ='./' + path + '/' + filename + '.json'
-    #new_comb = sorted([(f[0][1].shape[-1] * len(f[0][3][0]), f[0][0], f[0][1].shape[-1], len(f[0][3][0]), [list(ff) for ff in (f[0][1])], list(f[0][3][0])) for f in fisses], key=lambda l:l[0])
-    new_comb = [(f[0][1].shape[-1] * len(f[0][3][0]), f[0][0], f[0][1].shape[-1], len(f[0][3][0]), [list(ff) for ff in (f[0][1])], list(f[0][3][0])) for f in fisses]
-    new_comb = sorted(filter(lambda x: x[0] <= effort_max, new_comb), key=lambda l: l[1], reverse=True)[:10]
+    new_comb = sorted([(f[0][1].shape[-1] * len(f[0][3][0]), sorting_key(f[0]), f[0][1].shape[-1], len(f[0][3][0]), [list(ff) for ff in (f[0][1])], list(f[0][3][0])) for f in fisses], key=lambda l:l[0])
+    #new_comb = [(f[0][1].shape[-1] * len(f[0][3][0]), f[0][0], f[0][1].shape[-1], len(f[0][3][0]), [list(ff) for ff in (f[0][1])], list(f[0][3][0])) for f in fisses]
+    #new_comb = sorted(filter(lambda x: x[0] <= effort_max, new_comb), key=lambda l: l[1], reverse=True)[:10]
     with open(filenamepath, "w") as file:
         for c in new_comb:
             opt_design_dict = {'eff': c[0], 'obs': c[1], 'n_times': c[2], 'n_temp': c[3], 'times': c[4], 'temp': c[5]}
@@ -236,14 +280,14 @@ if __name__ == "__main__":
     Const = (n0, n_max)
 
     # Define initial parameter guesses
-    #a = 0.065
-    #b = 0.01
-    #c = 1.31
+    a = 0.065
+    b = 0.01
+    c = 1.31
 
     #2nd choice of parameters:
-    a = 0.0673
-    b = 0.01
-    c = 1.314
+    #a = 0.0673
+    #b = 0.01
+    #c = 1.314
 
     P = (a, b, c)
 
@@ -342,4 +386,5 @@ if __name__ == "__main__":
     make_convergence_plot(fischer_results, effort_low, effort, sorting_key, N_best)
 
     make_plots(fisses, sorting_key)
-    write_in_file(fisses, 2, 'D', effort_max, sorting_key)
+    write_in_file(fisses, 1, 'D', effort_max, sorting_key)
+    make_plots_mean(fisses, sorting_key)
