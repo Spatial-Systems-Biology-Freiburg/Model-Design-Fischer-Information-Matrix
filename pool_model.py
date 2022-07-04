@@ -1,16 +1,9 @@
 #!/usr/bin/env python3
 
 import numpy as np
-from scipy.integrate import odeint
-from scipy.integrate import solve_ivp
-import matplotlib.pyplot as plt
-import matplotlib as mpl
 import itertools as iter
 import multiprocessing as mp
 import time
-import json
-from scipy import stats
-from functools import partial
 
 # Import custom functions for optimization
 from src.optimization import get_best_fischer_results, get_new_combinations_from_best
@@ -29,6 +22,7 @@ def pool_model_sensitivity(y, t, Q, P, Const):
         (a*Temp + c) * (    n0*t*Temp * np.exp(-b*Temp*t))*(1-n/n_max) + (a*Temp + c) * (1 - 2*n/n_max + n0/n_max * np.exp(-b*Temp*t)) * sb,
         (     1    ) * (n -        n0 * np.exp(-b*Temp*t))*(1-n/n_max) + (a*Temp + c) * (1 - 2*n/n_max + n0/n_max * np.exp(-b*Temp*t)) * sc
     ]
+
 
 def jacobi(t, y, Q, P, Const):
     (n, sa, sb, sc) = y
