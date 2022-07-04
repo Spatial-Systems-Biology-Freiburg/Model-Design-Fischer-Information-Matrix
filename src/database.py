@@ -4,6 +4,34 @@ import numpy as np
 from datetime import datetime
 
 
+# Used to store results in mongodb
+def mark_as_np_array(ls: list):
+    ret = []
+    for l in ls:
+        if type(l) == np.ndarray:
+            ret.append(("np.ndarray", l.tolist()))
+        elif type(l) == list:
+            ret.append(mark_as_np_array(l))
+        else:
+            ret.append(l)
+    return ret
+
+
+# Used to convert back from mongodb stored results
+# TODO implement these algorithms in the database storing algorithms below
+def revert_marks(ls: list):
+    ret = []
+    for l in ls:
+        if type(l) == tuple:
+            if l[0] == "np.ndarray" and type(l[1]) == list:
+                ret.append(np.array(l[1]))
+        elif type(l) == list:
+            ret.append(revert_marks(l))
+        else:
+            ret.append(l)
+    return ret
+
+
 class FischerResult:
     '''Class to store a single fischer result.
     Use a list of this class to store many results.'''
@@ -17,6 +45,7 @@ class FischerResult:
         self.y0 = y0.tolist()
 
     def to_dict(self):
+        '''Mainly used to store results in database'''
         d = {
             "observable": self.observable,
             "times": self.times,
@@ -32,6 +61,9 @@ class FischerResult:
 
 
 def convert_fischer_results(fischer_results):
+    '''Converts results stored in database to fischer_results.
+    The conversion is NOT 1:1 since numpy arrays will not be arrays afterwards due to
+    mongodb not being able to directly store numpy arrays.'''
     fischer_dataclasses = []
     for f in fischer_results:
         fischer_dataclasses.append(FischerResult(*(f[0])))
