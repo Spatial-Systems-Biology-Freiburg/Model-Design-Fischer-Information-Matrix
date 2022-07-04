@@ -13,34 +13,30 @@ from scipy import stats
 from functools import partial
 
 
-def pool_model(n, t, Q, P, Const):
-    (a, b, c) = P
-    (Temp,) = Q
-    (n0, n_max) = Const
-    return (a*Temp + c)*(n-n0*np.exp(-b*Temp*t))*(1-n/n_max)
 
-def pool_model_sensitivity(t, n_s, Q, P, Const):
+def pool_model_sensitivity(y, t, Q, P, Const):
     (a, b, c) = P
     (Temp,) = Q
     (n0, n_max) = Const
-    (n, sa, sb, sc) = n_s
+    (n, sa, sb, sc) = y
     return [
         (a*Temp + c) * (n - n0*np.exp(-b*Temp*t))*(1-n/n_max),
-        (  Temp    ) * (n -        n0 * np.exp(-b*Temp*t))*(1-n/n_max),
-        (a*Temp + c) * (    n0*t*Temp * np.exp(-b*Temp*t))*(1-n/n_max),
-        (     1    ) * (n -        n0 * np.exp(-b*Temp*t))*(1-n/n_max)
+        (  Temp    ) * (n -        n0 * np.exp(-b*Temp*t))*(1-n/n_max) + (a*Temp + c) * (1 - 2*n/n_max + n0/n_max * np.exp(-b*Temp*t)) * sa,
+        (a*Temp + c) * (    n0*t*Temp * np.exp(-b*Temp*t))*(1-n/n_max) + (a*Temp + c) * (1 - 2*n/n_max + n0/n_max * np.exp(-b*Temp*t)) * sb,
+        (     1    ) * (n -        n0 * np.exp(-b*Temp*t))*(1-n/n_max) + (a*Temp + c) * (1 - 2*n/n_max + n0/n_max * np.exp(-b*Temp*t)) * sc
     ]
 
-def jacobi(Q, P, Const, t, n, sa, sb, sc):
+def jacobi(t, y, Q, P, Const):
+    (n, sa, sb, sc) = y
     (a, b, c) = P
     (Temp,) = Q
     (n0, n_max) = Const
-    #(n, sa, sb, sc) = n_s
+    dfdn = (a*Temp + c) * (1 - 2*n/n_max + n0/n_max * np.exp(-b*Temp*t))
     return np.array([
-        [(a*Temp + c) * (1 - 2*n/n_max + n0/n_max * np.exp(-b*Temp*t)), 0, 0, 0],
-        [(  Temp    ) * (1 - 2*n/n_max + n0/n_max * np.exp(-b*Temp*t)), 0, 0, 0],
-        [(a*Temp + c) * (  -  n0/n_max * t * Temp * np.exp(-b*Temp*t)), 0, 0, 0],
-        [(     1    ) * (1 - 2*n/n_max + n0/n_max * np.exp(-b*Temp*t)), 0, 0, 0]
+        [dfdn, 0, 0, 0],
+        [(  Temp    ) * (1 - 2*n/n_max + n0/n_max * np.exp(-b*Temp*t)), dfdn, 0, 0],
+        [(a*Temp + c) * (  -  n0/n_max * t * Temp * np.exp(-b*Temp*t)), 0, dfdn, 0],
+        [(     1    ) * (1 - 2*n/n_max + n0/n_max * np.exp(-b*Temp*t)), 0, 0, dfdn]
     ])
 
 
@@ -311,6 +307,9 @@ if __name__ == "__main__":
 
     P = (a, b, c)
 
+    # Initial values for complete ODE (with S-Terms)
+    y0 = np.array([n0, 0, 0, 0])
+
     # Define bounds for sampling
     temp_low = 2.0
     temp_high = 16.0
@@ -363,8 +362,8 @@ if __name__ == "__main__":
         # (obs, times, P, Q_arr, Const, Y0)
         fischer_results = p.starmap(calculate_Fischer_determinant, zip(
             combinations,
-            iter.repeat(pool_model),
-            iter.repeat(n0),
+            iter.repeat(pool_model_sensitivity),
+            iter.repeat(y0),
             iter.repeat(jacobi),
             iter.repeat(convert_S_matrix_to_determinant)
         ))
