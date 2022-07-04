@@ -2,6 +2,7 @@
 
 import numpy as np
 from scipy.integrate import odeint
+from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import itertools as iter
@@ -9,6 +10,7 @@ import multiprocessing as mp
 import time
 import json
 from scipy import stats
+from functools import partial
 
 
 def pool_model(n, t, Q, P, Const):
@@ -17,15 +19,28 @@ def pool_model(n, t, Q, P, Const):
     (n0, n_max) = Const
     return (a*Temp + c)*(n-n0*np.exp(-b*Temp*t))*(1-n/n_max)
 
-
-def jacobi(n, t, Q, P, Const):
+def pool_model_sensitivity(t, n_s, Q, P, Const):
     (a, b, c) = P
     (Temp,) = Q
     (n0, n_max) = Const
+    (n, sa, sb, sc) = n_s
+    return [
+        (a*Temp + c) * (n - n0*np.exp(-b*Temp*t))*(1-n/n_max),
+        (  Temp    ) * (n -        n0 * np.exp(-b*Temp*t))*(1-n/n_max),
+        (a*Temp + c) * (    n0*t*Temp * np.exp(-b*Temp*t))*(1-n/n_max),
+        (     1    ) * (n -        n0 * np.exp(-b*Temp*t))*(1-n/n_max)
+    ]
+
+def jacobi(Q, P, Const, t, n, sa, sb, sc):
+    (a, b, c) = P
+    (Temp,) = Q
+    (n0, n_max) = Const
+    #(n, sa, sb, sc) = n_s
     return np.array([
-        (  Temp) * (n -        n0 * np.exp(-b*Temp*t))*(1-n/n_max),
-        (a*Temp) * (    n0*t*Temp * np.exp(-b*Temp*t))*(1-n/n_max),
-        (     1) * (n -        n0 * np.exp(-b*Temp*t))*(1-n/n_max)
+        [(a*Temp + c) * (1 - 2*n/n_max + n0/n_max * np.exp(-b*Temp*t)), 0, 0, 0],
+        [(  Temp    ) * (1 - 2*n/n_max + n0/n_max * np.exp(-b*Temp*t)), 0, 0, 0],
+        [(a*Temp + c) * (  -  n0/n_max * t * Temp * np.exp(-b*Temp*t)), 0, 0, 0],
+        [(     1    ) * (1 - 2*n/n_max + n0/n_max * np.exp(-b*Temp*t)), 0, 0, 0]
     ])
 
 
@@ -53,12 +68,17 @@ def get_S_matrix(ODE_func, n0, times, Q_arr, P, Const, jacobian):
         # Store the results of the respective ODE solution
         Q = [Q_arr[i][j] for i, j in enumerate(index)]
         t = times[index]
+        #print(Q)
+       # print(t)
 
         # Actually solve the ODE for the selected parameter values
-        r = odeint(ODE_func, n0, t, args=(Q, P, Const)).reshape(t.size)
-
+        #r = odeint(ODE_func, n0, t, args=(Q, P, Const)).reshape(t.size)
+        #jac_matrix = partial(jacobian, Q, P, Const)
+        #sparsity = np.array([[1, 0, 0, 0], [1, 0, 0, 0], [1, 0, 0, 0], [1, 0, 0, 0]])
+        r = solve_ivp(ODE_func, [0, 20], [n0, 0.0, 0.0, 0.0], method='Radau', t_eval=t, args=(Q, P, Const))#, jac_sparsity=sparsity).y # sol for n, sa, sb, sc
+        #print(r[0])
         # Calculate the S-Matrix with the supplied jacobian
-        S[(slice(None), slice(None)) + index] = jacobian(r, t, Q, P, Const)
+        S[(slice(None), slice(None)) + index] = r[1:]
 
     # Reshape to 2D Form (len(P),:)
     S = S.reshape((len(P),np.prod(S.shape[1:])))
@@ -299,7 +319,7 @@ if __name__ == "__main__":
     temp_total = np.linspace(temp_low, temp_low + dtemp * (n_temp_max - 1) , n_temp_max)
 
     times_low = 0.0
-    times_high = 20.0
+    times_high = 15.0
     dtimes = 1.0
     n_times_max = int((times_high-times_low) / dtimes + 1) # effort+1
     times_total = np.linspace(times_low, times_low + dtimes * (n_times_max - 1), n_times_max)
@@ -313,7 +333,7 @@ if __name__ == "__main__":
     # How many new combinations should an old result spawn?
     N_spawn = 20
     # How many processes will be run in parallel
-    N_parallel = 44
+    N_parallel = 2
 
     # Begin sampling of time and temperature values
     combinations = []
