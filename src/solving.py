@@ -66,7 +66,7 @@ def convert_S_matrix_to_mineigenval(S):
     return mineigval
 
 
-def calculate_Fischer_determinant(combinations, ODE_func, Y0, jacobian, observable):
+def calculate_Fischer_observable(combinations, ODE_func, Y0, jacobian, observable):
     times, Q_arr, P, Const = combinations
     S = get_S_matrix(ODE_func, Y0, times, Q_arr, P, Const, jacobian)
     obs = observable(S)

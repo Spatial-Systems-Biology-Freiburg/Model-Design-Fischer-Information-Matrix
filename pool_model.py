@@ -14,7 +14,7 @@ from functools import partial
 
 # Import custom functions for optimization
 from src.optimization import get_best_fischer_results, get_new_combinations_from_best
-from src.solving import factorize_reduced, convert_S_matrix_to_determinant, convert_S_matrix_to_sumeigenval, convert_S_matrix_to_mineigenval, calculate_Fischer_determinant
+from src.solving import factorize_reduced, convert_S_matrix_to_determinant, convert_S_matrix_to_sumeigenval, convert_S_matrix_to_mineigenval, calculate_Fischer_observable
 from pool_model_plots import make_nice_plot, make_convergence_plot, make_plots, make_plots_mean, write_in_file
 
 
@@ -131,7 +131,7 @@ if __name__ == "__main__":
         # Calculate new results
         # fischer_results will have entries of the form
         # (obs, times, P, Q_arr, Const, Y0)
-        fischer_results = p.starmap(calculate_Fischer_determinant, zip(
+        fischer_results = p.starmap(calculate_Fischer_observable, zip(
             combinations,
             iter.repeat(pool_model_sensitivity),
             iter.repeat(y0),
