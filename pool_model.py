@@ -163,16 +163,8 @@ if __name__ == "__main__":
         iter.repeat(sorting_key),
         iter.repeat(1)
     ), chunksize=100)
-
     print(print_line.format(time.time()-start_time, opt_run+1), "done")
 
-    make_nice_plot(fisses, sorting_key)
-
-    make_convergence_plot(fischer_results, effort_low, effort, sorting_key, N_best)
-
-    make_plots(fisses, sorting_key)
-    write_in_file(fisses, 1, 'D', effort_max, sorting_key)
-    make_plots_mean(fisses, sorting_key)
     # Database part
     fischer_dataclasses = convert_fischer_results(fisses)
     coll = generate_new_collection("pool_model_random_grid_determinant_div_m")
