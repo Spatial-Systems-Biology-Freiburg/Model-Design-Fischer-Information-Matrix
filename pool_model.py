@@ -9,6 +9,7 @@ import time
 from src.optimization import get_best_fischer_results, get_new_combinations_from_best
 from src.solving import factorize_reduced, convert_S_matrix_to_determinant, convert_S_matrix_to_sumeigenval, convert_S_matrix_to_mineigenval, calculate_Fischer_observable
 from pool_model_plots import make_nice_plot, make_convergence_plot, make_plots, make_plots_mean, write_in_file
+from src.database import convert_fischer_results, generate_new_collection, insert_fischer_dataclasses, drop_all_collections
 
 
 def pool_model_sensitivity(y, t, Q, P, Const):
@@ -172,3 +173,7 @@ if __name__ == "__main__":
     make_plots(fisses, sorting_key)
     write_in_file(fisses, 1, 'D', effort_max, sorting_key)
     make_plots_mean(fisses, sorting_key)
+    # Database part
+    fischer_dataclasses = convert_fischer_results(fisses)
+    coll = generate_new_collection("pool_model_random_grid_determinant_div_m")
+    insert_fischer_dataclasses(fischer_dataclasses, coll)
