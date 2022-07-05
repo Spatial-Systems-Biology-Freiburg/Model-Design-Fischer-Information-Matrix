@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
 from scipy import stats
+import scipy as sp
 import itertools as iter
 
 # Import custom functions
@@ -97,6 +98,7 @@ def make_plots(fisses, sorting_key):
     fig.savefig("plots/determinant_FIM_vs_num_measurements.png")
     fig.clf()
 
+
 def make_plots_mean(fisses, sorting_key):
     new_comb = sorted([(f[0][1].shape[-1] * len(f[0][3][0]), sorting_key(f[0])) for f in fisses], key=lambda l:l[0])
     final_comb = [] # effort, mean_det, std_err_det
@@ -106,17 +108,47 @@ def make_plots_mean(fisses, sorting_key):
         same_eff_comb = list(filter(lambda x: x[0]==eff, new_comb))
         final_comb.append([eff, np.mean(same_eff_comb, axis=0)[1], stats.sem(same_eff_comb, axis=0)[1]])
 
-    x = [f[0] for f in final_comb]
-    y = [f[1] for f in final_comb]
-    y_std = [f[2] for f in final_comb]
+    x = np.array([f[0] for f in final_comb])
+    y = np.array([f[1] for f in final_comb])
+    y_std = np.array([f[2] for f in final_comb])
 
+
+    # Filter results for fitting. Exclude results with very low standard deviation
+    x_filt = x[y_std/y>0.01]
+    y_filt = y[y_std/y>0.01]
+    y_std_filt = y_std[y_std/y>0.01]
+
+    # Define function to fit
+    q = 0.5
+    f = lambda x, a, b, c, d, e, h: a + b/x + c/x**(q) + d/x**(q**2) + e/x**(q**3) + h*x
+    # Define initial values for fitting
+    y_max = np.max(y_filt)
+    x_max = x_filt[np.argmax(y_filt)]
+    a = y[-1]
+    b = x_max*(y_max - a)
+    c = b/50
+    d = c/50
+    e = d/50
+    h = (y_max-a)/(np.max(x_filt)-x_max)
+    p0 = (a, b, c, d, e, h)
+    # Do the fitting procedure
+    param, pcov = sp.optimize.curve_fit(f, x_filt, y_filt, p0=p0, sigma=y_std_filt, absolute_sigma=True)
+    # Convert params to humanly interpretable results
+    param_names = ["a", "b", "c", "d", "e", "h"]
+    param_format = [None]*len(param)*2
+    param_format[::2] = param_names
+    param_format[1::2] = param
+
+    # Generate plot
     fig, ax = plt.subplots()
-    # ax.scatter(x, y, marker="X")
+    label = "Function: f = a + b/x \n+ c/x*+q + d/x**(q**2) \n+ e/x**(q**3) + z*x\nFit params:\n" + len(param)*"{}={: 4.3e}\n"
+    ax.plot(x_filt, f(x_filt, *param), color="k", marker=".", label=label.format(*param_format))
     ax.errorbar(x, y, yerr=y_std, fmt = 'X')
     # ax.set_yscale('log')
     ax.set_xlabel('# of measurements', fontsize=15)
     ax.set_ylabel('det(F)', fontsize=15)
     # ax.tick_params(fontsize=13)
+    ax.legend()
     fig.savefig("plots/determinant_FIM_vs_num_measurements2_mean.png")
     fig.clf()
 
