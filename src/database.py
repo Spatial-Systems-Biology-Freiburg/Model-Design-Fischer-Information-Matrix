@@ -5,69 +5,55 @@ from datetime import datetime
 
 
 # Used to store results in mongodb
-def mark_as_np_array(ls: list):
-    ret = []
-    for l in ls:
-        if type(l) == np.ndarray:
-            ret.append(("np.ndarray", l.tolist()))
-        elif type(l) == list:
-            ret.append(mark_as_np_array(l))
-        else:
-            ret.append(l)
-    return ret
+def apply_marks(ls: list):
+    if type(ls) == np.ndarray:
+        return ["np.ndarray", ls.tolist()]
+    elif type(ls) == list:
+        return [apply_marks(l) for l in ls]
+    else:
+        return ls
 
 
 # Used to convert back from mongodb stored results
 # TODO implement these algorithms in the database storing algorithms below
 def revert_marks(ls: list):
-    ret = []
-    for l in ls:
-        if type(l) == tuple:
-            if l[0] == "np.ndarray" and type(l[1]) == list:
-                ret.append(np.array(l[1]))
-        elif type(l) == list:
-            ret.append(revert_marks(l))
-        else:
-            ret.append(l)
-    return ret
+    if type(ls) == list and len(ls) == 2 and ls[0] == "np.ndarray" and type(ls[1]) == list:
+        return np.array(ls[1])
+    elif type(ls) == list:
+        return [revert_marks(l) for l in ls]
+    else:
+        return ls
 
 
+@dataclass
 class FischerResult:
     '''Class to store a single fischer result.
     Use a list of this class to store many results.'''
+    observable: np.ndarray
+    times: np.ndarray
+    parameters: list
+    q_arr: list
+    constants: list
+    y0: np.array
 
-    def __init__(self, observable: np.ndarray, times: np.ndarray, parameters: list, q_arr: list, constants: list, y0: np.ndarray):
-        self.observable = observable.tolist()
-        self.times = times.tolist()
-        self.parameters = [p.tolist() if type(p) == np.ndarray else p for p in parameters]
-        self.q_arr = [q.tolist() if type(q) == np.ndarray else q for q in q_arr]
-        self.constants = [c.tolist() if type(c) == np.ndarray else c for c in constants]
-        self.y0 = y0.tolist()
-
-    def to_dict(self):
-        '''Mainly used to store results in database'''
+    def to_savedict(self):
+        '''Used to store results in database'''
         d = {
-            "observable": self.observable,
-            "times": self.times,
-            "parameters": self.parameters,
-            "q_arr": self.q_arr,
-            "constants": self.constants,
-            "y0": self.y0
+            "observable": apply_marks(self.observable),
+            "times": apply_marks(self.times),
+            "parameters": apply_marks(self.parameters),
+            "q_arr": apply_marks(self.q_arr),
+            "constants": apply_marks(self.constants),
+            "y0": apply_marks(self.y0)
         }
         return d
-    
-    def to_list(self):
-        return  [self.observable, self.times, self.parameters, self.q_arr, self.constants, self.y0]
 
 
 def convert_fischer_results(fischer_results):
     '''Converts results stored in database to fischer_results.
     The conversion is NOT 1:1 since numpy arrays will not be arrays afterwards due to
     mongodb not being able to directly store numpy arrays.'''
-    fischer_dataclasses = []
-    for f in fischer_results:
-        fischer_dataclasses.append(FischerResult(*(f[0])))
-    return fischer_dataclasses
+    return [FischerResult(*f[0]) for f in fischer_results]
 
 
 def __get_mongodb_client():
@@ -100,7 +86,7 @@ def generate_new_collection(name: str):
 
 def insert_fischer_dataclasses(fischer_dataclasses, collection):
     coll = get_collection(collection)
-    fisses = [f.to_dict() for f in fischer_dataclasses]
+    fisses = [f.to_savedict() for f in fischer_dataclasses]
     coll.insert_many(fisses)
 
 
@@ -126,5 +112,5 @@ def get_collection(collection):
 
 def get_fischer_results_from_collection(collection):
     coll = get_collection(collection)
-    fisses = [[[np.array(c[key]) for key in ["observable", "times", "parameters", "q_arr", "constants", "y0"]]] for c in coll.find()]
+    fisses = [[[revert_marks(c[key]) for key in ["observable", "times", "parameters", "q_arr", "constants", "y0"]]] for c in coll.find()]
     return fisses
