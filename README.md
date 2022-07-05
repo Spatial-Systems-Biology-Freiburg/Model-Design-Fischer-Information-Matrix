@@ -2,9 +2,8 @@
 Calculates the Fischer Information Matrix of a given ODE system.
 
 # Pool Model Plots
-![#Temperature and #Times Dependence](https://github.com/jonaspleyer/Model-Design-Fischer-Information-Matrix/blob/master/plots/pool_model-Time-Temperature-2D-Hist.png?raw=true)
+![Fischer Determinant vs Number of Measurements](plots/determinant_FIM_vs_num_measurements2_mean.png)
 
-# Growth Model Plots
-![Comparison of #time samples](https://github.com/jonaspleyer/Model-Design-Fischer-Information-Matrix/blob/master/plots/growth_model-Winners_current.png?raw=true)
+![Temperature and Times Dependence](plots/pool_model-Time-Temperature-2D-Hist.png)
 
-![Winners of sampling process](https://github.com/jonaspleyer/Model-Design-Fischer-Information-Matrix/blob/master/plots/growth_model-Success_N_times.png?raw=true)
+![Effort Lines in Temperature-Times Plot](plots/Effort_lines.png)
