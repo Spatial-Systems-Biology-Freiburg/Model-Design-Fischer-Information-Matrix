@@ -6,7 +6,7 @@ from pool_model import sorting_key
 
 
 if __name__ == "__main__":
-    collection = "2022/07/04-19:05:22_pool_model_random_grid_determinant_div_m"
+    collection = "2022/07/05-12:52:36_pool_model_random_grid_determinant_div_m"
     
     fischer_results = get_fischer_results_from_collection(collection)
 
