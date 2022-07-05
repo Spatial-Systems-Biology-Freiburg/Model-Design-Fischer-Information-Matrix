@@ -1,6 +1,3 @@
-# Fischer Information Matrix
-Calculates the Fischer Information Matrix of a given ODE system.
-
 # Pool Model Plots
 ![Fischer Determinant vs Number of Measurements](plots/determinant_FIM_vs_num_measurements2_mean.png)
 
