@@ -62,7 +62,7 @@ def convert_S_matrix_to_mineigenval(S):
     F = S.dot(S.T)
 
     # Calculate sum eigenvals
-    mineigval = np.max(np.linalg.eigvals(F))
+    mineigval = np.min(np.linalg.eigvals(F))
     return mineigval
 
 
