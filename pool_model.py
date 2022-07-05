@@ -43,7 +43,7 @@ def sorting_key(x):
     '''Contents of x are typically results of calculate_Fischer_determinant (see above)
     Thus x = (obs, times, P, Q_arr, Const, Y0)'''
     #norm = max(x[1].size, 1.0)**0.5
-    norm = np.sqrt(len(x[2]) * x[1].size)
+    norm = len(x[2]) * x[1].size
     # norm = 1.0
     seperate_times = 1.0
     for t in x[1]:
