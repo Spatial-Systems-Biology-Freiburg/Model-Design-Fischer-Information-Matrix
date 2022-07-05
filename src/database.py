@@ -110,6 +110,11 @@ def get_collection(collection):
         return collection
 
 
+def list_all_collections():
+    db = __get_mongodb_database()
+    print(db.list_collection_names())
+
+
 def get_fischer_results_from_collection(collection):
     coll = get_collection(collection)
     fisses = [[[revert_marks(c[key]) for key in ["observable", "times", "parameters", "q_arr", "constants", "y0"]]] for c in coll.find()]
