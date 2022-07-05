@@ -2,9 +2,11 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
 from scipy import stats
+import itertools as iter
 
 # Import custom functions
 from src.solving import factorize_reduced
+from src.optimization import get_best_fischer_results
 
 
 def make_nice_plot(fischer_results, sorting_key):
@@ -12,9 +14,9 @@ def make_nice_plot(fischer_results, sorting_key):
     # fischer_results[0] = (obs, times, P, Q_arr, Const, Y0)
     fig, ax = plt.subplots()
 
-    x = [f[0][1].shape[-1] for f in fischer_results]
+    x = [np.array(f[0][1]).shape[-1] for f in fischer_results]
     y = [len(f[0][3][0]) for f in fischer_results]
-    weights = [sorting_key(f[0]) for f in fischer_results]
+    weights = [sorting_key([np.array(fi) for fi in f[0]]) for f in fischer_results]
 
     b = (
         np.arange(min(x)-0.5, max(x)+1.5, 1.0),
@@ -58,7 +60,7 @@ def make_convergence_plot(fischer_results, effort_low, effort_high, sorting_key,
         x = np.array([f[0] for f in factorize_reduced(k)])
         x = x[x<=effort_high]
         x = x[k/x<=effort_high]
-        if x.size >= 5:
+        if np.array(x).size >= 5:
             x_smooth = np.linspace(x.min(), x.max())
             y = k/x
             y_smooth = k/x_smooth
@@ -75,7 +77,7 @@ def make_convergence_plot(fischer_results, effort_low, effort_high, sorting_key,
 
 
 def make_plots(fisses, sorting_key):
-    new_comb = sorted([(f[0][1].shape[-1] * len(f[0][3][0]), sorting_key(f[0])) for f in fisses], key=lambda l:l[0])
+    new_comb = sorted([(np.array(f[0][1]).shape[-1] * len(f[0][3][0]), sorting_key([np.array(fi) for fi in f[0]])) for f in fisses], key=lambda l:l[0])
     final_comb = []
     for i in range (0, len(new_comb)):
         if i == 0 or new_comb[i][0] != new_comb[i - 1][0]:
@@ -96,7 +98,7 @@ def make_plots(fisses, sorting_key):
     fig.clf()
 
 def make_plots_mean(fisses, sorting_key):
-    new_comb = sorted([(f[0][1].shape[-1] * len(f[0][3][0]), sorting_key(f[0])) for f in fisses], key=lambda l:l[0])
+    new_comb = sorted([(np.array(f[0][1]).shape[-1] * len(f[0][3][0]), sorting_key([np.array(fi) for fi in f[0]])) for f in fisses], key=lambda l:l[0])
     final_comb = [] # effort, mean_det, std_err_det
     print(new_comb[-1][0])
     effort_list = set([c[0] for c in new_comb])
@@ -125,7 +127,7 @@ def write_in_file(fisses, num_iter, crit_name, effort_max, sorting_key):
     filename = f"Experimental_design_iter_{num_iter}_crit_{crit_name}_a_{P[0]:.3f}_b_{P[1]:.3f}_c_{P[2]:.3f}_n0_{Const[0]}_nmax_{Const[1]}"#_effmax_{effort_max}"
     path = 'results'
     filenamepath ='./' + path + '/' + filename + '.json'
-    new_comb = sorted([(f[0][1].shape[-1] * len(f[0][3][0]), sorting_key(f[0]), f[0][1].shape[-1], len(f[0][3][0]), [list(ff) for ff in (f[0][1])], list(f[0][3][0])) for f in fisses], key=lambda l:l[0])
+    new_comb = sorted([(np.array(f[0][1]).shape[-1] * len(f[0][3][0]), sorting_key([np.array(fi) for fi in f[0]]), np.array(f[0][1]).shape[-1], len(f[0][3][0]), [list(ff) for ff in (f[0][1])], list(f[0][3][0])) for f in fisses], key=lambda l:l[0])
     with open(filenamepath, "w") as file:
         for c in new_comb:
             opt_design_dict = {'eff': c[0], 'obs': c[1], 'n_times': c[2], 'n_temp': c[3], 'times': c[4], 'temp': c[5]}

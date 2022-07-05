@@ -1,21 +1,15 @@
 #!/usr/bin/env python3
 
 import numpy as np
-from scipy.integrate import odeint
-from scipy.integrate import solve_ivp
-import matplotlib.pyplot as plt
-import matplotlib as mpl
 import itertools as iter
 import multiprocessing as mp
 import time
-import json
-from scipy import stats
-from functools import partial
 
 # Import custom functions for optimization
 from src.optimization import get_best_fischer_results, get_new_combinations_from_best
 from src.solving import factorize_reduced, convert_S_matrix_to_determinant, convert_S_matrix_to_sumeigenval, convert_S_matrix_to_mineigenval, calculate_Fischer_observable
 from pool_model_plots import make_nice_plot, make_convergence_plot, make_plots, make_plots_mean, write_in_file
+from src.database import convert_fischer_results, generate_new_collection, insert_fischer_dataclasses, drop_all_collections
 
 
 def pool_model_sensitivity(y, t, Q, P, Const):
@@ -29,6 +23,7 @@ def pool_model_sensitivity(y, t, Q, P, Const):
         (a*Temp + c) * (    n0*t*Temp * np.exp(-b*Temp*t))*(1-n/n_max) + (a*Temp + c) * (1 - 2*n/n_max + n0/n_max * np.exp(-b*Temp*t)) * sb,
         (     1    ) * (n -        n0 * np.exp(-b*Temp*t))*(1-n/n_max) + (a*Temp + c) * (1 - 2*n/n_max + n0/n_max * np.exp(-b*Temp*t)) * sc
     ]
+
 
 def jacobi(t, y, Q, P, Const):
     (n, sa, sb, sc) = y
@@ -168,13 +163,9 @@ if __name__ == "__main__":
         iter.repeat(sorting_key),
         iter.repeat(1)
     ), chunksize=100)
-
     print(print_line.format(time.time()-start_time, opt_run+1), "done")
 
-    make_nice_plot(fisses, sorting_key)
-
-    make_convergence_plot(fischer_results, effort_low, effort, sorting_key, N_best)
-
-    make_plots(fisses, sorting_key)
-    write_in_file(fisses, 1, 'D', effort_max, sorting_key)
-    make_plots_mean(fisses, sorting_key)
+    # Database part
+    fischer_dataclasses = convert_fischer_results(fisses)
+    coll = generate_new_collection("pool_model_random_grid_determinant_div_m")
+    insert_fischer_dataclasses(fischer_dataclasses, coll)
