@@ -57,7 +57,7 @@ def convert_fischer_results(fischer_results):
 
 
 def __get_mongodb_client():
-    client = MongoClient('localhost', 27017)
+    client = MongoClient('pleyer-ws.fdm.privat', 27017)
     return client
 
 

@@ -15,13 +15,14 @@ def factorize_reduced(M):
     return res
 
 
-def get_S_matrix(ODE_func, y0, times, Q_arr, P, Const, jacobian):
+def get_S_matrix(ODE_func, y0_t0, times, Q_arr, P, Const, jacobian):
     """now we calculate the derivative with respect to the parameters
     The matrix S has the form
     i   -->  index of parameter
     jk  -->  index of kth variable
     t   -->  index of time
     S[i, j1, j2, ..., t] = (dO/dp_i(v_j1, v_j2, v_j3, ..., t))"""
+    (y0, t0) = y0_t0
     S = np.zeros((len(P),) + (times.shape[-1],) + tuple(len(x) for x in Q_arr))
 
     # Iterate over all combinations of Q-Values
@@ -31,7 +32,8 @@ def get_S_matrix(ODE_func, y0, times, Q_arr, P, Const, jacobian):
         t = times[index]
 
         # Actually solve the ODE for the selected parameter values
-        r = odeint(ODE_func, y0, t, args=(Q, P, Const), Dfun=jacobian).T[1:,:]
+        #r = solve_ivp(ODE_func, [t0, t.max()], y0, method='Radau', t_eval=t,  args=(Q, P, Const), jac=jacobian).y.T[1:,:]
+        r = odeint(ODE_func, y0, np.insert(t, 0, t0), args=(Q, P, Const), Dfun=jacobian).T[1:,1:]
 
         # Calculate the S-Matrix with the supplied jacobian
         S[(slice(None), slice(None)) + index] = r
@@ -71,4 +73,3 @@ def calculate_Fischer_observable(combinations, ODE_func, Y0, jacobian, observabl
     S = get_S_matrix(ODE_func, Y0, times, Q_arr, P, Const, jacobian)
     obs = observable(S)
     return obs, times, P, Q_arr, Const, Y0
-

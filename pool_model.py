@@ -12,6 +12,7 @@ from pool_model_plots import make_nice_plot, make_convergence_plot, make_plots, 
 from src.database import convert_fischer_results, generate_new_collection, insert_fischer_dataclasses, drop_all_collections
 
 
+
 def pool_model_sensitivity(y, t, Q, P, Const):
     (a, b, c) = P
     (Temp,) = Q
@@ -25,7 +26,7 @@ def pool_model_sensitivity(y, t, Q, P, Const):
     ]
 
 
-def jacobi(t, y, Q, P, Const):
+def jacobi(y, t, Q, P, Const):
     (n, sa, sb, sc) = y
     (a, b, c) = P
     (Temp,) = Q
@@ -74,7 +75,7 @@ if __name__ == "__main__":
     P = (a, b, c)
 
     # Initial values for complete ODE (with S-Terms)
-    y0 = np.array([n0, 0, 0, 0])
+    y0 = [n0, 0, 0, 0]
 
     # Define bounds for sampling
     temp_low = 2.0
@@ -88,6 +89,9 @@ if __name__ == "__main__":
     dtimes = 1.0
     n_times_max = int((times_high-times_low) / dtimes + 1) # effort+1
     times_total = np.linspace(times_low, times_low + dtimes * (n_times_max - 1), n_times_max)
+
+    # Initial conditions with initial time
+    y0_t0 = (y0, times_low)
 
     # How often should we choose a sample with same number of temperatures and times
     N_mult = 250
@@ -129,7 +133,7 @@ if __name__ == "__main__":
         fischer_results = p.starmap(calculate_Fischer_observable, zip(
             combinations,
             iter.repeat(pool_model_sensitivity),
-            iter.repeat(y0),
+            iter.repeat(y0_t0),
             iter.repeat(jacobi),
             iter.repeat(convert_S_matrix_to_determinant)
         ))
