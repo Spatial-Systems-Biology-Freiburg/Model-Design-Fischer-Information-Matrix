@@ -11,7 +11,7 @@ if __name__ == "__main__":
     fischer_results = get_fischer_results_from_collection(collection)
 
     make_nice_plot(fischer_results, sorting_key)
-    # TODO currently not working due to casting from fischer_results
+    
     # make_convergence_plot(fischer_results, effort_low=2, effort_high=11, sorting_key=sorting_key, N_best=5)
     make_plots(fischer_results, sorting_key)
     # write_in_file(fisses, 1, 'D', effort_max, sorting_key)
