@@ -63,6 +63,7 @@ def __get_mongodb_client():
 
 def __get_mongodb_database():
     client = __get_mongodb_client()
+    # This should probably for the future be modified to have custom names
     db = client.tsenso_pgaindrik_model_design
     return db
 
