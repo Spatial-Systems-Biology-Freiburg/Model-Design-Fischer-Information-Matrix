@@ -190,5 +190,5 @@ def plot_solution_with_exp_design_choice(n_time_temp, fischer_results, sorting_k
         plt.xlabel('t', fontsize=15)
         plt.xlim(times_test[0], times_test[-1])
         plt.legend(fontsize=12, framealpha=0)
-        plt.savefig(f'plots/ExpDesign_ntimes_{n_times}_ntemp_{n_temp}_NumDesign_{index}.png', bbox_inches='tight')
+        plt.savefig(f'plots/ExpDesign_ntimes_{n_times}_ntemp_{n_temp}_NumDesign_{index[0]}.png', bbox_inches='tight')
         plt.show()
