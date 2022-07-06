@@ -167,6 +167,7 @@ def write_in_file(fisses, num_iter, crit_name, effort_max, sorting_key):
             json.dump(opt_design_dict, file, indent=1)
     file.close()
 
+
 def plot_solution_with_exp_design_choice(n_time_temp, fischer_results, sorting_key, N_best, ODE_func):
     (n_temp, n_times) = n_time_temp
     # fisher_results = (obs, times, P, Q_arr, Const, Y0)
