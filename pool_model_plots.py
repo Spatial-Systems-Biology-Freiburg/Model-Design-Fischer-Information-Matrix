@@ -170,7 +170,9 @@ def write_in_file(fisses, num_iter, crit_name, effort_max, sorting_key):
 def plot_solution_with_exp_design_choice(n_time_temp, fischer_results, sorting_key, N_best, ODE_func):
     (n_temp, n_times) = n_time_temp
     # fisher_results = (obs, times, P, Q_arr, Const, Y0)
+    print(fischer_results)
     fisher_chosen = get_best_fischer_results(n_time_temp, [fiss[0] for fiss in fischer_results], sorting_key, N_best)
+    print(fisher_chosen)
     i = 0
     for fis in fisher_chosen:
         (obs, times, P, Q_arr, Const, Y0) = fis
@@ -190,7 +192,7 @@ def plot_solution_with_exp_design_choice(n_time_temp, fischer_results, sorting_k
         plt.xlabel('t', fontsize=15)
         plt.xlim(times_test[0], times_test[-1])
         plt.legend(fontsize=12, framealpha=0)
-        plt.savefig(f'plots/ExpDesign_ntimes_{n_times}_ntemp_{n_temp}_NumDesign_{i + 1}.png', bbox_inches='tight')
+        plt.savefig(f'plots/ExpDesign_ntimes_{n_times}_ntemp_{n_temp}_NumDesign_{i + 1}best.png', bbox_inches='tight')
         plt.show()
 
         i += 1

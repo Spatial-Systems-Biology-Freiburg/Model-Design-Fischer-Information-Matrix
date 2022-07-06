@@ -16,4 +16,6 @@ if __name__ == "__main__":
     make_plots(fischer_results, sorting_key)
     # write_in_file(fisses, 1, 'D', effort_max, sorting_key)
     make_plots_mean(fischer_results, sorting_key)
-    plot_solution_with_exp_design_choice([5, 3], fischer_results, sorting_key, 3, pool_model_sensitivity)
+    # Plot N_best experimental designs
+    N_best = 3
+    plot_solution_with_exp_design_choice([5, 3], fischer_results, sorting_key, N_best, pool_model_sensitivity)
