@@ -94,15 +94,15 @@ if __name__ == "__main__":
     y0_t0 = (y0, times_low)
 
     # How often should we choose a sample with same number of temperatures and times
-    N_mult = 250
+    N_mult = 1000
     # How many optimization runs should we do
-    N_opt = 25
+    N_opt = 100
     # How many best results should be propagated forward?
-    N_best = 15
+    N_best = 20
     # How many new combinations should an old result spawn?
-    N_spawn = 7
+    N_spawn = 10
     # How many processes will be run in parallel
-    N_parallel = 44
+    N_parallel = 46
 
     # Begin sampling of time and temperature values
     combinations = []
