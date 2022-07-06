@@ -12,7 +12,7 @@ from pool_model_plots import make_nice_plot, make_convergence_plot, make_plots, 
 from src.database import convert_fischer_results, generate_new_collection, insert_fischer_dataclasses, drop_all_collections
 
 
-
+# System of equation for pool-model and sensitivities
 def pool_model_sensitivity(y, t, Q, P, Const):
     (a, b, c) = P
     (Temp,) = Q
