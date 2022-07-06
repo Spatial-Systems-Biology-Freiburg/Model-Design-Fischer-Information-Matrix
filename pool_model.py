@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import numpy as np
-import itertools as iter
+import itertools as it
 import multiprocessing as mp
 import time
 
@@ -94,15 +94,15 @@ if __name__ == "__main__":
     y0_t0 = (y0, times_low)
 
     # How often should we choose a sample with same number of temperatures and times
-    N_mult = 250
+    N_mult = 1000
     # How many optimization runs should we do
-    N_opt = 25
+    N_opt = 100
     # How many best results should be propagated forward?
-    N_best = 15
+    N_best = 20
     # How many new combinations should an old result spawn?
-    N_spawn = 7
+    N_spawn = 10
     # How many processes will be run in parallel
-    N_parallel = 44
+    N_parallel = 46
 
     # Begin sampling of time and temperature values
     combinations = []
@@ -113,7 +113,7 @@ if __name__ == "__main__":
     for _ in range(N_mult):
         # Sample only over combinatins of both
         # for (n_temp, n_times) in factorize_reduced(effort):
-        for (n_times, n_temp) in iter.product(range(effort_low, min(effort, n_times_max - 2)), range(effort_low, min(effort, n_temp_max - 2))):
+        for (n_times, n_temp) in it.product(range(effort_low, min(effort, n_times_max - 2)), range(effort_low, min(effort, n_temp_max - 2))):
             temperatures = np.random.choice(temp_total, n_temp, replace=False)
             #temperatures = np.linspace(temp_low, temp_low + dtemp * (n_temp - 1) , n_temp)
             times = np.array([np.sort(np.random.choice(times_total, n_times, replace=False)) for _ in range(len(temperatures))])
@@ -132,10 +132,10 @@ if __name__ == "__main__":
         # (obs, times, P, Q_arr, Const, Y0)
         fischer_results = p.starmap(calculate_Fischer_observable, zip(
             combinations,
-            iter.repeat(pool_model_sensitivity),
-            iter.repeat(y0_t0),
-            iter.repeat(jacobi),
-            iter.repeat(convert_S_matrix_to_determinant)
+            it.repeat(pool_model_sensitivity),
+            it.repeat(y0_t0),
+            it.repeat(jacobi),
+            it.repeat(convert_S_matrix_to_determinant)
         ))
 
         # Do not optimize further if we are in the last run
@@ -143,29 +143,29 @@ if __name__ == "__main__":
             # Delete old combinations
             combinations.clear()
             fisses = p.starmap(get_best_fischer_results, zip(
-                    iter.product(range(effort_low, min(effort, n_times_max - 2)), range(effort_low, min(effort, n_temp_max - 2))),
-                    iter.repeat(fischer_results),
-                    iter.repeat(sorting_key),
-                    iter.repeat(N_best)
+                    it.product(range(effort_low, min(effort, n_times_max - 2)), range(effort_low, min(effort, n_temp_max - 2))),
+                    it.repeat(fischer_results),
+                    it.repeat(sorting_key),
+                    it.repeat(N_best)
             ), chunksize=100)
             # Calculate new combinations parallelized
             combinations = p.starmap(get_new_combinations_from_best, zip(
                 fisses,
-                iter.repeat(N_spawn),
-                iter.repeat(temp_low),
-                iter.repeat(temp_high),
-                iter.repeat(dtemp),
-                iter.repeat(times_low),
-                iter.repeat(times_high),
-                iter.repeat(dtimes)
+                it.repeat(N_spawn),
+                it.repeat(temp_low),
+                it.repeat(temp_high),
+                it.repeat(dtemp),
+                it.repeat(times_low),
+                it.repeat(times_high),
+                it.repeat(dtimes)
             ))
             combinations = [x for comb_list in combinations for x in comb_list]
 
     fisses = p.starmap(get_best_fischer_results, zip(
-        iter.product(range(effort_low, min(effort, n_times_max - 2)), range(effort_low, min(effort, n_temp_max - 2))),
-        iter.repeat(fischer_results),
-        iter.repeat(sorting_key),
-        iter.repeat(1)
+        it.product(range(effort_low, min(effort, n_times_max - 2)), range(effort_low, min(effort, n_temp_max - 2))),
+        it.repeat(fischer_results),
+        it.repeat(sorting_key),
+        it.repeat(1)
     ), chunksize=100)
     print(print_line.format(time.time()-start_time, opt_run+1), "done")
 
