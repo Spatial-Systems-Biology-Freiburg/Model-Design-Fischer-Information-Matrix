@@ -57,12 +57,15 @@ def convert_fischer_results(fischer_results):
 
 
 def __get_mongodb_client():
+    # By default this will try to connect to a local database
+    # By modifying this path we can also use remote databases
     client = MongoClient('localhost', 27017)
     return client
 
 
 def __get_mongodb_database():
     client = __get_mongodb_client()
+    # This should probably for the future be modified to have custom names
     db = client.tsenso_pgaindrik_model_design
     return db
 
