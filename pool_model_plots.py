@@ -4,6 +4,8 @@ import numpy as np
 from scipy import stats
 import scipy as sp
 import itertools as iter
+from scipy.integrate import odeint, solve_ivp
+import itertools as iter
 
 # Import custom functions
 from src.solving import factorize_reduced
@@ -35,8 +37,8 @@ def make_nice_plot(fischer_results, sorting_key):
     ax.text(6, 7, '40', fontsize=13, color='r')
     ax.text(7.8, 8, '60', fontsize=13, color='r')
     ax.text(9.3, 8.9, '80', fontsize=13, color='r')
-    ax.text(10.8, 9.5, '100', fontsize=13, color='r')
-    ax.text(12, 10.3, '120', fontsize=13, color='r')
+    #ax.text(10.8, 9.5, '100', fontsize=13, color='r')
+    #ax.text(12, 10.3, '120', fontsize=13, color='r')
     ax.set_title("Weighted Final Results", fontsize=13)
     ax.set_xlabel("#Time Steps", fontsize=13)
     ax.set_ylabel("#Temperature Values", fontsize=13)
@@ -102,7 +104,6 @@ def make_plots(fisses, sorting_key):
 def make_plots_mean(fisses, sorting_key):
     new_comb = sorted([(f[0][1].shape[-1] * len(f[0][3][0]), sorting_key(f[0])) for f in fisses], key=lambda l:l[0])
     final_comb = [] # effort, mean_det, std_err_det
-    print(new_comb[-1][0])
     effort_list = set([c[0] for c in new_comb])
     for eff in effort_list:
         same_eff_comb = list(filter(lambda x: x[0]==eff, new_comb))
@@ -132,24 +133,24 @@ def make_plots_mean(fisses, sorting_key):
     h = (y_max-a)/(np.max(x_filt)-x_max)
     p0 = (a, b, c, d, e, h)
     # Do the fitting procedure
-    param, pcov = sp.optimize.curve_fit(f, x_filt, y_filt, p0=p0, sigma=y_std_filt, absolute_sigma=True)
+    #param, pcov = sp.optimize.curve_fit(f, x_filt, y_filt, p0=p0, sigma=y_std_filt, absolute_sigma=True)
     # Convert params to humanly interpretable results
-    param_names = ["a", "b", "c", "d", "e", "h"]
-    param_format = [None]*len(param)*2
-    param_format[::2] = param_names
-    param_format[1::2] = param
+    #param_names = ["a", "b", "c", "d", "e", "h"]
+    #param_format = [None]*len(param)*2
+    #param_format[::2] = param_names
+    #param_format[1::2] = param
 
-    # Generate plot
+    # Generate plo
     fig, ax = plt.subplots()
-    label = "Function: f = a + b/x \n+ c/x*+q + d/x**(q**2) \n+ e/x**(q**3) + z*x\nFit params:\n" + len(param)*"{}={: 4.3e}\n"
-    ax.plot(x_filt, f(x_filt, *param), color="k", marker=".", label=label.format(*param_format))
+    #label = "Function: f = a + b/x \n+ c/x*+q + d/x**(q**2) \n+ e/x**(q**3) + z*x\nFit params:\n" + len(param)*"{}={: 4.3e}\n"
+    #ax.plot(x_filt, f(x_filt, *param), color="k", marker=".", label=label.format(*param_format))
     ax.errorbar(x, y, yerr=y_std, fmt = 'X')
     # ax.set_yscale('log')
     ax.set_xlabel('# of measurements', fontsize=15)
     ax.set_ylabel('det(F)', fontsize=15)
     # ax.tick_params(fontsize=13)
     ax.legend()
-    fig.savefig("plots/determinant_FIM_vs_num_measurements2_mean.png")
+    fig.savefig("plots/determinant_FIM_vs_num_measurements_mean.png")
     fig.clf()
 
 
@@ -165,3 +166,31 @@ def write_in_file(fisses, num_iter, crit_name, effort_max, sorting_key):
             opt_design_dict = {'eff': c[0], 'obs': c[1], 'n_times': c[2], 'n_temp': c[3], 'times': c[4], 'temp': c[5]}
             json.dump(opt_design_dict, file, indent=1)
     file.close()
+
+def plot_solution_with_exp_design_choice(n_time_temp, fischer_results, sorting_key, N_best, ODE_func):
+    (n_temp, n_times) = n_time_temp
+    # fisher_results = (obs, times, P, Q_arr, Const, Y0)
+    fisher_chosen = get_best_fischer_results(n_time_temp, [fiss[0] for fiss in fischer_results], sorting_key, N_best)
+    i = 0
+    for fis in fisher_chosen:
+        (obs, times, P, Q_arr, Const, Y0) = fis
+        (y0, t0) = Y0
+        times_test = np.linspace(t0, times.max()+1, 100)
+
+        for index in iter.product(*[range(len(q)) for q in Q_arr]):
+            # Store the results of the respective ODE solution
+            Q = [Q_arr[i][j] for i, j in enumerate(index)]
+            t = times[index]
+            sol_model = odeint(ODE_func, y0, times_test, args=(Q, P, Const)).T[0]
+            sol_model_design = odeint(ODE_func, y0, np.insert(t, 0, t0), args=(Q, P, Const)).T[0, 1:]
+
+            plt.plot(times_test, sol_model, linestyle='dotted', label = r'T = {}'.format(Q[0]))
+            plt.scatter(t, sol_model_design)
+        plt.ylabel('n', fontsize=15)
+        plt.xlabel('t', fontsize=15)
+        plt.xlim(times_test[0], times_test[-1])
+        plt.legend(fontsize=12, framealpha=0)
+        plt.savefig(f'plots/ExpDesign_ntimes_{n_times}_ntemp_{n_temp}_NumDesign_{i + 1}.png', bbox_inches='tight')
+        plt.show()
+
+        i += 1

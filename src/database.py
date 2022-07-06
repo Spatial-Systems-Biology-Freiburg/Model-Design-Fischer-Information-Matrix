@@ -57,8 +57,6 @@ def convert_fischer_results(fischer_results):
 
 
 def __get_mongodb_client():
-    # By default this will try to connect to a local database
-    # By modifying this path we can also use remote databases
     client = MongoClient('pleyer-ws.fdm.privat', 27017)
     return client
 
