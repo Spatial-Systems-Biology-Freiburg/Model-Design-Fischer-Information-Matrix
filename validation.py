@@ -245,6 +245,29 @@ if __name__ == "__main__":
     print(F)
     print(np.linalg.eigvals(F))
     print(np.linalg.det(F))
+
+    # Intelligently choose parameters for good and bad runs
+    n_times_good = 10
+    t0 = 6
+    t1 = 11
+    td = 2
+    times_inflections = np.linspace(t1, t0, n_temps)
+    times_good = np.array([
+        np.linspace(times_inflections[i] - td, times_inflections[i] + td, n_times_good) for i in range(n_temps)
+    ])
+    times_worse = np.array([np.linspace(times_low + td, times_high - td, n_times_good) for _ in range(len(temperatures))])
+    S_good = get_S_matrix(ode, y0_t0, times_good, [temperatures], P, Const, jacobian=jacobi)
+    S_worse = get_S_matrix(ode, y0_t0, times_worse, [temperatures], P, Const, jacobian=jacobi)
+
+    times_plot = np.array([
+        np.linspace(times_low, times_high) for _ in range(len(temperatures))
+    ])
+    plot_odes(ode, y0_t0, times_plot, [temperatures], P, Const, jacobian=jacobi, times_mark=times_good, filename="plots/validation_times_good.png")
+    plot_odes(ode, y0_t0, times_plot, [temperatures], P, Const, jacobian=jacobi, times_mark=times_worse, filename="plots/validation_times_worse.png")
+
+    # Plot good and bad times
+    print("Determinant good: {}".format(np.linalg.det(S_good.dot(S_good.T))))
+    print("Determinant worse: {}".format(np.linalg.det(S_worse.dot(S_worse.T))))
     
     # for n in range(2,201):
     #     temperatures = np.linspace(temp_low, temp_high, n)
