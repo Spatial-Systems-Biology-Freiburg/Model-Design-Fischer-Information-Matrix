@@ -4,8 +4,7 @@ import numpy as np
 from scipy import stats
 import scipy as sp
 import itertools as iter
-from scipy.integrate import odeint, solve_ivp
-import itertools as iter
+from scipy.integrate import odeint
 
 # Import custom functions
 from src.solving import factorize_reduced
@@ -152,20 +151,6 @@ def make_plots_mean(fisses, sorting_key):
     ax.legend()
     fig.savefig("plots/determinant_FIM_vs_num_measurements_mean.png")
     fig.clf()
-
-
-def write_in_file(fisses, num_iter, crit_name, effort_max, sorting_key):
-    P = fisses[0][0][2]
-    Const = fisses[0][0][4]
-    filename = f"Experimental_design_iter_{num_iter}_crit_{crit_name}_a_{P[0]:.3f}_b_{P[1]:.3f}_c_{P[2]:.3f}_n0_{Const[0]}_nmax_{Const[1]}"#_effmax_{effort_max}"
-    path = 'results'
-    filenamepath ='./' + path + '/' + filename + '.json'
-    new_comb = sorted([(f[0][1].shape[-1] * len(f[0][3][0]), sorting_key(f[0]), np.array(f[0][1]).shape[-1], len(f[0][3][0]), [list(ff) for ff in (f[0][1])], list(f[0][3][0])) for f in fisses], key=lambda l:l[0])
-    with open(filenamepath, "w") as file:
-        for c in new_comb:
-            opt_design_dict = {'eff': c[0], 'obs': c[1], 'n_times': c[2], 'n_temp': c[3], 'times': c[4], 'temp': c[5]}
-            json.dump(opt_design_dict, file, indent=1)
-    file.close()
 
 
 def plot_solution_with_exp_design_choice(n_time_temp, fischer_results, sorting_key, N_best, ODE_func):

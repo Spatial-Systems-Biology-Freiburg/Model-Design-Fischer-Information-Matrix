@@ -70,9 +70,9 @@ def jacobi(y, t, Q, P, Const):
     dfdn = (a*Temp + c) * (1 - 2*n/n_max + n0/n_max * np.exp(-b*Temp*t))
     return np.array([
         [dfdn, 0, 0, 0],
-        [(  Temp    ) * (1 - 2*n/n_max + n0/n_max * np.exp(-b*Temp*t)), dfdn, 0, 0],
-        [(a*Temp + c) * (  -  n0/n_max * t * Temp * np.exp(-b*Temp*t)), 0, dfdn, 0],
-        [(     1    ) * (1 - 2*n/n_max + n0/n_max * np.exp(-b*Temp*t)), 0, 0, dfdn]
+        [(  Temp    ) * (1 - 2*n/n_max + n0/n_max * np.exp(-b*Temp*t)) + (a*Temp + c) * (1 - 2 / n_max) * sa, dfdn, 0, 0],
+        [(a*Temp + c) * (  -  n0/n_max * t * Temp * np.exp(-b*Temp*t)) + (a*Temp + c) * (1 - 2 / n_max) * sb, 0, dfdn, 0],
+        [(     1    ) * (1 - 2*n/n_max + n0/n_max * np.exp(-b*Temp*t)) + (a*Temp + c) * (1 - 2 / n_max) * sc, 0, 0, dfdn]
     ])
 
 

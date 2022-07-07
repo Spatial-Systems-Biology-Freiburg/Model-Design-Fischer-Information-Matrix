@@ -19,7 +19,7 @@ def pool_model_sensitivity(y, t, Q, P, Const):
     (n0, n_max) = Const
     (n, sa, sb, sc) = y
     return [
-        (a*Temp + c) * (n - n0*np.exp(-b*Temp*t))*(1-n/n_max),
+        (a*Temp + c) * (n -        n0 * np.exp(-b*Temp*t))*(1-n/n_max),
         (  Temp    ) * (n -        n0 * np.exp(-b*Temp*t))*(1-n/n_max) + (a*Temp + c) * (1 - 2*n/n_max + n0/n_max * np.exp(-b*Temp*t)) * sa,
         (a*Temp + c) * (    n0*t*Temp * np.exp(-b*Temp*t))*(1-n/n_max) + (a*Temp + c) * (1 - 2*n/n_max + n0/n_max * np.exp(-b*Temp*t)) * sb,
         (     1    ) * (n -        n0 * np.exp(-b*Temp*t))*(1-n/n_max) + (a*Temp + c) * (1 - 2*n/n_max + n0/n_max * np.exp(-b*Temp*t)) * sc
@@ -33,10 +33,10 @@ def jacobi(y, t, Q, P, Const):
     (n0, n_max) = Const
     dfdn = (a*Temp + c) * (1 - 2*n/n_max + n0/n_max * np.exp(-b*Temp*t))
     return np.array([
-        [dfdn, 0, 0, 0],
-        [(  Temp    ) * (1 - 2*n/n_max + n0/n_max * np.exp(-b*Temp*t)), dfdn, 0, 0],
-        [(a*Temp + c) * (  -  n0/n_max * t * Temp * np.exp(-b*Temp*t)), 0, dfdn, 0],
-        [(     1    ) * (1 - 2*n/n_max + n0/n_max * np.exp(-b*Temp*t)), 0, 0, dfdn]
+        [   dfdn,                                                                                             0,    0,    0   ],
+        [(  Temp    ) * (1 - 2*n/n_max + n0/n_max * np.exp(-b*Temp*t)) + (a*Temp + c) * (1 - 2 / n_max) * sa, dfdn, 0,    0   ],
+        [(a*Temp + c) * (  -  n0/n_max * t * Temp * np.exp(-b*Temp*t)) + (a*Temp + c) * (1 - 2 / n_max) * sb, 0,    dfdn, 0   ],
+        [(     1    ) * (1 - 2*n/n_max + n0/n_max * np.exp(-b*Temp*t)) + (a*Temp + c) * (1 - 2 / n_max) * sc, 0,    0,    dfdn]
     ])
 
 
@@ -142,6 +142,7 @@ if __name__ == "__main__":
         if opt_run != N_opt-1:
             # Delete old combinations
             combinations.clear()
+            # Choose the N_best results with the largest objective function value from fischer_results
             fisses = p.starmap(get_best_fischer_results, zip(
                     iter.product(range(effort_low, min(effort, n_times_max - 2)), range(effort_low, min(effort, n_temp_max - 2))),
                     iter.repeat(fischer_results),
@@ -160,7 +161,7 @@ if __name__ == "__main__":
                 iter.repeat(dtimes)
             ))
             combinations = [x for comb_list in combinations for x in comb_list]
-
+    # Choose 1 best result for each (n_times, n_temp) combination
     fisses = p.starmap(get_best_fischer_results, zip(
         iter.product(range(effort_low, min(effort, n_times_max - 2)), range(effort_low, min(effort, n_temp_max - 2))),
         iter.repeat(fischer_results),
