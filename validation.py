@@ -97,7 +97,7 @@ def get_y(x):
     return x[0]
 
 
-def plot_odes(ODE_func, y0_t0, times, Q_arr, P, Const, jacobian=None):
+def plot_odes(ODE_func, y0_t0, times_plot, Q_arr, P, Const, times_mark=None, jacobian=None, filename="plots/validation.png"):
     """now we calculate the derivative with respect to the parameters
     The matrix S has the form
     i   -->  index of parameter
@@ -105,30 +105,45 @@ def plot_odes(ODE_func, y0_t0, times, Q_arr, P, Const, jacobian=None):
     t   -->  index of time
     S[i, j1, j2, ..., t] = (dO/dp_i(v_j1, v_j2, v_j3, ..., t))"""
     (y0, t0) = y0_t0
-    
-    res = []
+
+    # Check if additional t_mark was supplied. If not assume it is same as t_plot
+    if type(times_mark) == type(None):
+        times_mark = times_plot
+    elif times_mark.shape[0] != times_plot.shape[0]:
+        raise ValueError("times_mark and times_plot need to have same x-dimension!")
+
+    res_mark = []
+    res_plot = []
     # Iterate over all combinations of Q-Values
     for index in it.product(*[range(len(q)) for q in Q_arr]):
         # Store the results of the respective ODE solution
         Q = [Q_arr[i][j] for i, j in enumerate(index)]
-        t = times[index]
+        t_plot = times_plot[index]
+        t_mark = times_mark[index]
 
         # Actually solve the ODE for the selected parameter values
         #r = solve_ivp(ODE_func, [t0, t.max()], y0, method='Radau', t_eval=t,  args=(Q, P, Const), jac=jacobian).y.T[1:,:]
-        r = odeint(ODE_func, y0, np.insert(t, 0, t0), args=(Q, P, Const), Dfun=jacobian)
-        res.append((t, r, Q))
+        r_plot = odeint(ODE_func, y0, np.insert(t_plot, 0, t0), args=(Q, P, Const), Dfun=jacobian)
+        r_mark = odeint(ODE_func, y0, np.insert(t_mark, 0, t0), args=(Q, P, Const), Dfun=jacobian)
+        res_plot.append((t_plot, r_plot, Q))
+        res_mark.append((t_mark, r_mark, Q))
 
-    fig, ax = plt.subplots((r.shape[1]), figsize=(12, 8))
+    fig, ax = plt.subplots((r_plot.shape[1]), figsize=(12, 8))
     cols = ["red", "blue", "green", "black", "orange", "yellow"]
     linestyles = ["-", ":", "--", "-."]
-    for i, (t, r, Q) in enumerate(res):
-        ax[0].plot(t, r[1:,0], marker=".", label='$n(t)$ for Temperature: {:3.1f}'.format(Q[0]), color=cols[i])
+    for i, (t_plot, r_plot, Q) in enumerate(res_plot):
+        ax[0].plot(t_plot, r_plot[1:,0], color=cols[i])
+        for j in range(1,r_plot.shape[1]):
+            ax[j].plot(t_plot, r_plot[1:,j], color=cols[i], linestyle=linestyles[j])
+    
+    for i, (t_mark, r_mark, Q) in enumerate(res_mark):
+        ax[0].plot(t_mark, r_mark[1:,0], marker=".", label='$n(t)$ for Temperature: {:3.1f}'.format(Q[0]), color=cols[i])
         ax[0].legend()
-        for j in range(1,r.shape[1]):
-            ax[j].plot(t, r[1:,j], marker=".", label='$\partial\log(n)/\partial\log(p_{})$'.format(j) + ' Temperature: {:3.1f}'.format(Q[0]), color=cols[i], linestyle=linestyles[j])
+        for j in range(1,r_plot.shape[1]):
+            ax[j].plot(t_mark, r_mark[1:,j], marker=".", label='$\partial\log(n)/\partial\log(p_{})$'.format(j) + ' Temperature: {:3.1f}'.format(Q[0]), color=cols[i], linestyle="")
             ax[j].legend()
     fig.tight_layout()
-    fig.savefig("plots/validation.png")
+    fig.savefig(filename)
 
 
 def get_S_matrix(ODE_func, y0_t0, times, Q_arr, P, Const, jacobian=None):
