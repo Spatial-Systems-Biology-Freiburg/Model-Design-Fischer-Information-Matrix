@@ -118,20 +118,23 @@ def get_S_matrix(ODE_func, y0_t0, times, Q_arr, P, Const, jacobian=None):
         #r = solve_ivp(ODE_func, [t0, t.max()], y0, method='Radau', t_eval=t,  args=(Q, P, Const), jac=jacobian).y.T[1:,:]
         r = odeint(ODE_func, y0, np.insert(t, 0, t0), args=(Q, P, Const), Dfun=jacobian)
         res.append((t, r, Q))
-        r = r.T[1:,1:]
+        q = r.T[1:,1:]
 
         # Calculate the S-Matrix with the supplied jacobian
-        S[(slice(None), slice(None)) + index] = r
+        S[(slice(None), slice(None)) + index] = q
     fig, ax = plt.subplots((r.shape[1]))
     cols = ["red", "blue", "green", "black", "orange", "yellow"]
     linestyles = ["-", ":", "--", "-."]
     for i, (t, r, Q) in enumerate(res):
+        print(r)
+        print(t)
         ax[0].plot(t, r[1:,0], marker=".", label='$n(t)$ for Temperature: {:3.1f}'.format(Q[0]), color=cols[i])
         ax[0].legend()
         for j in range(1,r.shape[1]):
             ax[j].plot(t, r[1:,j], marker=".", label='$\partial\log(n)/\partial\log(p_{})$'.format(j) + ' Temperature: {:3.1f}'.format(Q[0]), color=cols[i], linestyle=linestyles[j])
             ax[j].legend()
-    fig.savefig("validation.png")
+    fig.savefig("plots/validation.png")
+    
     # Reshape to 2D Form (len(P),:)
     S = S.reshape((len(P),np.prod(S.shape[1:])))
     return S
