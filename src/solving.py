@@ -3,8 +3,6 @@ from scipy.integrate import odeint
 import itertools as iter
 import multiprocessing as mp
 import time
-from functools import partial
-
 
 def factorize_reduced(M):
     res = []
@@ -70,5 +68,5 @@ def convert_S_matrix_to_mineigenval(S):
 def calculate_Fischer_observable(combinations, ODE_func, Y0, jacobian, observable):
     times, Q_arr, P, Const = combinations
     S = get_S_matrix(ODE_func, Y0, times, Q_arr, P, Const, jacobian)
-    obs = observable(S)
+    obs = observable(times, Q_arr, P, Const, S)
     return obs, times, P, Q_arr, Const, Y0
