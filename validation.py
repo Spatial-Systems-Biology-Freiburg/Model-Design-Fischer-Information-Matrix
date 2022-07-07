@@ -140,7 +140,7 @@ def plot_odes(ODE_func, y0_t0, times_plot, Q_arr, P, Const, times_mark=None, jac
         ax[0].plot(t_mark, r_mark[1:,0], marker=".", label='$n(t)$ for Temperature: {:3.1f}'.format(Q[0]), color=cols[i])
         ax[0].legend()
         for j in range(1,r_plot.shape[1]):
-            ax[j].plot(t_mark, r_mark[1:,j], marker=".", label='$\partial\log(n)/\partial\log(p_{})$'.format(j) + ' Temperature: {:3.1f}'.format(Q[0]), color=cols[i], linestyle="")
+            ax[j].plot(t_mark, r_mark[1:,j], marker=".", label='$\partial n/\partial p_{}$'.format(j) + ' Temperature: {:3.1f}'.format(Q[0]), color=cols[i], linestyle="")
             ax[j].legend()
     fig.tight_layout()
     fig.savefig(filename)
