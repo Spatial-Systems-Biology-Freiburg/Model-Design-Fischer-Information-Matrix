@@ -15,7 +15,6 @@ def get_new_combinations_from_best(best, N_spawn, temp_low, temp_high, dtemp, ti
         combinations.append((times, Q_arr, P, Const))
         # Now spawn new results via next neighbors of current results
         for _ in range(0, N_spawn):
-            #temps_new = Q_arr[0]
             temps_new = np.array(
                 [np.random.choice([max(temp_low, T-dtemp), T, min(temp_high, T+dtemp)]) for T in Q_arr[0]]
             )
