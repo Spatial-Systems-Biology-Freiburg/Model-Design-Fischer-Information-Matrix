@@ -40,24 +40,13 @@ def get_S_matrix(ODE_func, y0_t0, times, Q_arr, P, Const, jacobian=None):
     return S
 
 
-def weight_objective(obj, times, Q_arr, P, Const):
-    norm = len(P) * times.size
-    seperate_times = 1.0
-    for t in times:
-        if len(np.unique(t)) != len(t) or len(np.unique(Q_arr[0])) != len(Q_arr[0]):
-            seperate_times = 0.0
-    return obj * seperate_times / norm
-
-
-def convert_S_matrix_to_determinant(times, Q_arr, P, Const, S):
+def convert_S_matrix_to_determinant(S):
     # Calculate Fisher Matrix
     F = S.dot(S.T)
 
     # Calculate Determinant
     det = np.linalg.det(F)
     return det
-
-
 
 def convert_S_matrix_to_sumeigenval(S):
     # Calculate Fisher Matrix
