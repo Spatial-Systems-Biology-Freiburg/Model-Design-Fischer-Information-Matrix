@@ -15,7 +15,7 @@ def factorize_reduced(M):
     return res
 
 
-def get_S_matrix(ODE_func, y0_t0, times, Q_arr, P, Const, jacobian):
+def get_S_matrix(ODE_func, y0_t0, times, Q_arr, P, Const, jacobian=None):
     """now we calculate the derivative with respect to the parameters
     The matrix S has the form
     i   -->  index of parameter
