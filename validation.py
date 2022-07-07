@@ -126,8 +126,6 @@ def get_S_matrix(ODE_func, y0_t0, times, Q_arr, P, Const, jacobian=None):
     cols = ["red", "blue", "green", "black", "orange", "yellow"]
     linestyles = ["-", ":", "--", "-."]
     for i, (t, r, Q) in enumerate(res):
-        print(r)
-        print(t)
         ax[0].plot(t, r[1:,0], marker=".", label='$n(t)$ for Temperature: {:3.1f}'.format(Q[0]), color=cols[i])
         ax[0].legend()
         for j in range(1,r.shape[1]):
