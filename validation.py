@@ -97,7 +97,7 @@ def get_y(x):
     return x[0]
 
 
-def get_S_matrix(ODE_func, y0_t0, times, Q_arr, P, Const, jacobian=None):
+def plot_odes(ODE_func, y0_t0, times, Q_arr, P, Const, jacobian=None):
     """now we calculate the derivative with respect to the parameters
     The matrix S has the form
     i   -->  index of parameter
@@ -105,8 +105,7 @@ def get_S_matrix(ODE_func, y0_t0, times, Q_arr, P, Const, jacobian=None):
     t   -->  index of time
     S[i, j1, j2, ..., t] = (dO/dp_i(v_j1, v_j2, v_j3, ..., t))"""
     (y0, t0) = y0_t0
-    S = np.zeros((len(P),) + (times.shape[-1],) + tuple(len(x) for x in Q_arr))
-
+    
     res = []
     # Iterate over all combinations of Q-Values
     for index in it.product(*[range(len(q)) for q in Q_arr]):
@@ -118,11 +117,8 @@ def get_S_matrix(ODE_func, y0_t0, times, Q_arr, P, Const, jacobian=None):
         #r = solve_ivp(ODE_func, [t0, t.max()], y0, method='Radau', t_eval=t,  args=(Q, P, Const), jac=jacobian).y.T[1:,:]
         r = odeint(ODE_func, y0, np.insert(t, 0, t0), args=(Q, P, Const), Dfun=jacobian)
         res.append((t, r, Q))
-        q = r.T[1:,1:]
 
-        # Calculate the S-Matrix with the supplied jacobian
-        S[(slice(None), slice(None)) + index] = q
-    fig, ax = plt.subplots((r.shape[1]))
+    fig, ax = plt.subplots((r.shape[1]), figsize=(12, 8))
     cols = ["red", "blue", "green", "black", "orange", "yellow"]
     linestyles = ["-", ":", "--", "-."]
     for i, (t, r, Q) in enumerate(res):
@@ -131,6 +127,7 @@ def get_S_matrix(ODE_func, y0_t0, times, Q_arr, P, Const, jacobian=None):
         for j in range(1,r.shape[1]):
             ax[j].plot(t, r[1:,j], marker=".", label='$\partial\log(n)/\partial\log(p_{})$'.format(j) + ' Temperature: {:3.1f}'.format(Q[0]), color=cols[i], linestyle=linestyles[j])
             ax[j].legend()
+    fig.tight_layout()
     fig.savefig("plots/validation.png")
     
     # Reshape to 2D Form (len(P),:)
@@ -199,7 +196,8 @@ if __name__ == "__main__":
     temperatures = np.linspace(temp_low, temp_high, n_temps)
     times = np.array([np.linspace(times_low, times_high, n_times) for _ in range(len(temperatures))])
 
-    S = get_S_matrix(pool_model_sensitivity, y0_t0, times, [temperatures], P, Const, jacobian=jacobi)
+    ode = pool_model_sensitivity
+    plot_odes(ode, y0_t0, times, [temperatures], P, Const, jacobian=jacobi)
 
     # Print the fischer matrix and its eigenvalues and determinant
     F = S.dot(S.T)
