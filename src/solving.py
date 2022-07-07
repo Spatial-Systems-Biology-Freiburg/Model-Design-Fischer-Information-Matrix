@@ -1,6 +1,5 @@
 import numpy as np
 from scipy.integrate import odeint
-from scipy.integrate import solve_ivp
 import itertools as iter
 import multiprocessing as mp
 import time
