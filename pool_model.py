@@ -8,7 +8,7 @@ import time
 # Import custom functions for optimization
 from src.optimization import get_best_fischer_results, get_new_combinations_from_best
 from src.solving import factorize_reduced, convert_S_matrix_to_determinant, convert_S_matrix_to_sumeigenval, convert_S_matrix_to_mineigenval, calculate_Fischer_observable
-from pool_model_plots import make_nice_plot, make_convergence_plot, make_plots, make_plots_mean, write_in_file
+from pool_model_plots import make_nice_plot, make_convergence_plot, make_plots, make_plots_mean
 from src.database import convert_fischer_results, generate_new_collection, insert_fischer_dataclasses, drop_all_collections
 
 
