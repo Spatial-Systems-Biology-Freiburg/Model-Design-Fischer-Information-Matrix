@@ -47,6 +47,7 @@ def get_S_matrix(ODE_func, y0_t0, times, Q_arr, P, Const, jacobian=None):
     return S, C
 
 
+
 def convert_S_matrix_to_determinant(times, Q_arr, P, Const, S, C):
     # Calculate Fisher Matrix
     F = (S.dot(C)).dot(S.T)
