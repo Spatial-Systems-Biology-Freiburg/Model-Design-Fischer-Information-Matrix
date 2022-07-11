@@ -6,7 +6,12 @@ from pool_model import sorting_key, pool_model_sensitivity
 
 
 if __name__ == "__main__":
+    # collection w/o covariance error matrix
     collection = "2022/07/06-15:18:06_pool_model_random_grid_determinant_div_m"
+    
+    # collection with covariance error matrix
+    #collection = "2022/07/11-19:36:37_pool_model_random_grid_determinant_div_m"
+
 
     fischer_results = get_fischer_results_from_collection(collection)
 

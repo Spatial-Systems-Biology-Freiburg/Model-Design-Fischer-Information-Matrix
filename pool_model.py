@@ -8,7 +8,7 @@ import time
 # Import custom functions for optimization
 from src.optimization import get_best_fischer_results, get_new_combinations_from_best
 from src.solving import factorize_reduced, convert_S_matrix_to_determinant, convert_S_matrix_to_sumeigenval, convert_S_matrix_to_mineigenval, calculate_Fischer_observable
-from pool_model_plots import make_nice_plot, make_convergence_plot, make_plots, make_plots_mean, write_in_file
+from pool_model_plots import make_nice_plot, make_convergence_plot, make_plots, make_plots_mean
 from src.database import convert_fischer_results, generate_new_collection, insert_fischer_dataclasses, drop_all_collections
 
 
@@ -51,6 +51,7 @@ def sorting_key(x):
         if len(np.unique(t)) != len(t) or len(np.unique(x[3][0])) != len(x[3][0]):
             seperate_times = 0.0
     return x[0] * seperate_times /norm
+
 
 
 if __name__ == "__main__":
@@ -135,7 +136,8 @@ if __name__ == "__main__":
             iter.repeat(pool_model_sensitivity),
             iter.repeat(y0_t0),
             iter.repeat(jacobi),
-            iter.repeat(convert_S_matrix_to_determinant)
+            iter.repeat(convert_S_matrix_to_determinant),
+            iter.repeat(False) # True if use covariance error natrix, False if not
         ))
 
         # Do not optimize further if we are in the last run
