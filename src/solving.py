@@ -57,7 +57,7 @@ def convert_S_matrix_to_determinant(times, Q_arr, P, Const, S, C):
     return det
 
 
-def convert_S_matrix_to_sumeigenval(S, C):
+def convert_S_matrix_to_sumeigenval(times, Q_arr, P, Const, S, C):
     # Calculate Fisher Matrix
     F = S.dot(C).dot(S.T)
 
@@ -65,7 +65,7 @@ def convert_S_matrix_to_sumeigenval(S, C):
     sumeigval = np.sum(np.linalg.eigvals(F))
     return sumeigval
 
-def convert_S_matrix_to_mineigenval(S, C):
+def convert_S_matrix_to_mineigenval(times, Q_arr, P, Const, S, C):
     # Calculate Fisher Matrix
     F = S.dot(C).dot(S.T)
 
