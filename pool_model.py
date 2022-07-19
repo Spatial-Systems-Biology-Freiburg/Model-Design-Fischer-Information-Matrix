@@ -4,11 +4,11 @@ import numpy as np
 import itertools as iter
 import multiprocessing as mp
 import time
+from functools import partial
 
 # Import custom functions for optimization
-from src.optimization import get_best_fischer_results, get_new_combinations_from_best
+from src.optimization import get_best_fischer_results, get_new_combinations_from_best, set_multistart_combinations, get_best_fischer_results2, gradient_descent, discrete_random
 from src.solving import factorize_reduced, convert_S_matrix_to_determinant, convert_S_matrix_to_sumeigenval, convert_S_matrix_to_mineigenval, calculate_Fischer_observable
-from pool_model_plots import make_nice_plot, make_convergence_plot, make_plots, make_plots_mean
 from src.database import convert_fischer_results, generate_new_collection, insert_fischer_dataclasses, drop_all_collections
 
 
@@ -43,15 +43,29 @@ def jacobi(y, t, Q, P, Const):
 def sorting_key(x):
     '''Contents of x are typically results of calculate_Fischer_determinant (see above)
     Thus x = (obs, times, P, Q_arr, Const, Y0)'''
-    #norm = max(x[1].size, 1.0)**0.5
-    norm = len(x[2]) * x[1].size
-    # norm = 1.0
+    #norm = x[1].size**(2)
+    norm = 1.0
     seperate_times = 1.0
     for t in x[1]:
         if len(np.unique(t)) != len(t) or len(np.unique(x[3][0])) != len(x[3][0]):
             seperate_times = 0.0
-    return x[0] * seperate_times /norm
+    return x[0] * seperate_times / norm
 
+
+def optimization_run(combination, ODE_func, Y0, jacobian, observable, N_opt, N_spawn, N_best, temp_bnds, dtemp, times_bnds, dtimes, method='discrete_random', method_cov='wo_error', err=None): 
+    func_FIM_calc = partial(calculate_Fischer_observable, ODE_func= ODE_func, Y0=Y0, jacobian=jacobian, observable=observable, method=method_cov, err=err)
+
+    if method == 'discrete_random':
+        optim_func = discrete_random
+    elif method == 'gradient_descent':
+        optim_func = gradient_descent
+
+    combination_best = [combination]  
+    for opt_run in range (N_opt):
+        fisses = optim_func(combination_best, func_FIM_calc, N_spawn, N_best, temp_bnds, dtemp, times_bnds, dtimes)
+        if opt_run != N_opt - 1:
+            combination_best = [(times, P, Q_arr, Const) for (obs, times, P, Q_arr, Const, Y0) in fisses]
+    return fisses
 
 
 if __name__ == "__main__":
@@ -60,7 +74,6 @@ if __name__ == "__main__":
     n_max = 2e4
     effort_low = 2
     effort = 11
-    effort_max = 20
     Const = (n0, n_max)
 
     # Define initial parameter guesses
@@ -81,12 +94,14 @@ if __name__ == "__main__":
     # Define bounds for sampling
     temp_low = 2.0
     temp_high = 16.0
+    temp_bnds = (temp_low, temp_high)
     dtemp = 1.0
     n_temp_max = int((temp_high - temp_low) / dtemp + 1) # effort+1
     temp_total = np.linspace(temp_low, temp_low + dtemp * (n_temp_max - 1) , n_temp_max)
 
     times_low = 0.0
     times_high = 15.0
+    times_bnds = (times_low, times_high)
     dtimes = 1.0
     n_times_max = int((times_high-times_low) / dtimes + 1) # effort+1
     times_total = np.linspace(times_low, times_low + dtimes * (n_times_max - 1), n_times_max)
@@ -115,10 +130,7 @@ if __name__ == "__main__":
         # Sample only over combinatins of both
         # for (n_temp, n_times) in factorize_reduced(effort):
         for (n_times, n_temp) in iter.product(range(effort_low, min(effort, n_times_max - 2)), range(effort_low, min(effort, n_temp_max - 2))):
-            temperatures = np.random.choice(temp_total, n_temp, replace=False)
-            #temperatures = np.linspace(temp_low, temp_low + dtemp * (n_temp - 1) , n_temp)
-            times = np.array([np.sort(np.random.choice(times_total, n_times, replace=False)) for _ in range(len(temperatures))])
-            combinations.append((times, [temperatures], P, Const))
+            combinations.append(set_multistart_combinations(n_times, n_temp, times_total, temp_total, P, Const, 'cont'))
 
     # Create pool we will later use
     p = mp.Pool(N_parallel)
@@ -126,51 +138,26 @@ if __name__ == "__main__":
     # Begin optimization scheme
     start_time = time.time()
     print_line = "[Time: {:> 8.3f} Run: {:> " +str(len(str(N_opt))) + "}] Optimizing"
-    for opt_run in range(0, N_opt):
-        print(print_line.format(time.time()-start_time, opt_run+1), end="\r")
-        # Calculate new results
-        # fischer_results will have entries of the form
-        # (obs, times, P, Q_arr, Const, Y0)
-        fischer_results = p.starmap(calculate_Fischer_observable, zip(
+
+    fisses = p.starmap(optimization_run, zip(
             combinations,
             iter.repeat(pool_model_sensitivity),
             iter.repeat(y0_t0),
             iter.repeat(jacobi),
             iter.repeat(convert_S_matrix_to_determinant),
-            iter.repeat(False) # True if use covariance error natrix, False if not
-        ))
+            iter.repeat(N_opt),
+            iter.repeat(N_spawn),
+            iter.repeat(N_best),
+            iter.repeat(temp_bnds),
+            iter.repeat(0.1),
+            iter.repeat(times_bnds),
+            iter.repeat(0.1),
+            iter.repeat('gradient_descent'),
+            iter.repeat('relative_error'),
+            iter.repeat(0.25) # relative error
+        ), chunksize=100)
 
-        # Do not optimize further if we are in the last run
-        if opt_run != N_opt-1:
-            # Delete old combinations
-            combinations.clear()
-            # Choose the N_best results with the largest objective function value from fischer_results
-            fisses = p.starmap(get_best_fischer_results, zip(
-                    iter.product(range(effort_low, min(effort, n_times_max - 2)), range(effort_low, min(effort, n_temp_max - 2))),
-                    iter.repeat(fischer_results),
-                    iter.repeat(sorting_key),
-                    iter.repeat(N_best)
-            ), chunksize=100)
-            # Calculate new combinations parallelized
-            combinations = p.starmap(get_new_combinations_from_best, zip(
-                fisses,
-                iter.repeat(N_spawn),
-                iter.repeat(temp_low),
-                iter.repeat(temp_high),
-                iter.repeat(dtemp),
-                iter.repeat(times_low),
-                iter.repeat(times_high),
-                iter.repeat(dtimes)
-            ))
-            combinations = [x for comb_list in combinations for x in comb_list]
-    # Choose 1 best result for each (n_times, n_temp) combination
-    fisses = p.starmap(get_best_fischer_results, zip(
-        iter.product(range(effort_low, min(effort, n_times_max - 2)), range(effort_low, min(effort, n_temp_max - 2))),
-        iter.repeat(fischer_results),
-        iter.repeat(sorting_key),
-        iter.repeat(1)
-    ), chunksize=100)
-    print(print_line.format(time.time()-start_time, opt_run+1), "done")
+    print(print_line.format(time.time()-start_time, N_opt), "done")
 
     # Database part
     fischer_dataclasses = convert_fischer_results(fisses)
