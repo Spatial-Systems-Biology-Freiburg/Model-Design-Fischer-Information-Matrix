@@ -92,4 +92,17 @@ def calculate_Fischer_observable(combinations, ODE_func, Y0, jacobian, observabl
         print('Error: Argument "err" should be provided')
     S, C = get_S_matrix(ODE_func, Y0, times, Q_arr, P, Const, jacobian, method, err)
     obs = observable(times, Q_arr, P, Const, S, C)
+
+    # Penalty function (not allowing the same choice of measurement=(time, temp)) and norm:
+    norm = 1.0
+    seperate_times = 1.0
+    for t in times:
+        for t1, t2 in iter.combinations(t, 2):
+            if np.abs(t1 - t2) <= 0.05:
+                seperate_times = 0.0
+        for T1, T2 in iter.combinations(Q_arr[0], 2):    
+            if np.abs(T1 - T2) <= 0.05:
+                seperate_times = 0.0   
+    obs = obs * seperate_times / norm
+
     return obs, times, P, Q_arr, Const, Y0
