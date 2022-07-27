@@ -52,7 +52,7 @@ def sorting_key(x):
     return x[0] * seperate_times / norm
 
 
-def optimization_run(combination, ODE_func, Y0, jacobian, observable, N_opt, N_spawn, N_best, temp_bnds, dtemp, times_bnds, dtimes, method='discrete_random', method_cov='wo_error', err=None): 
+def optimization_run(combination, ODE_func, Y0, jacobian, observable, N_opt, N_spawn, N_best, temp_bnds, dtemp, times_bnds, dtimes, num_temp_fixed, method='discrete_random', method_cov='wo_error', err=None): 
     func_FIM_calc = partial(calculate_Fischer_observable, ODE_func= ODE_func, Y0=Y0, jacobian=jacobian, observable=observable, method=method_cov, err=err)
 
     if method == 'discrete_random':
@@ -62,7 +62,7 @@ def optimization_run(combination, ODE_func, Y0, jacobian, observable, N_opt, N_s
 
     combination_best = [combination]  
     for opt_run in range (N_opt):
-        fisses = optim_func(combination_best, func_FIM_calc, N_spawn, N_best, temp_bnds, dtemp, times_bnds, dtimes)
+        fisses = optim_func(combination_best, func_FIM_calc, N_spawn, N_best, temp_bnds, dtemp, times_bnds, dtimes, num_temp_fixed)
         if opt_run != N_opt - 1:
             combination_best = [(times, P, Q_arr, Const) for (obs, times, P, Q_arr, Const, Y0) in fisses]
     return fisses
@@ -98,13 +98,15 @@ if __name__ == "__main__":
     dtemp = 1.0
     n_temp_max = int((temp_high - temp_low) / dtemp + 1) # effort+1
     temp_total = np.linspace(temp_low, temp_low + dtemp * (n_temp_max - 1) , n_temp_max)
+    temp_fixed = [2.0]
 
     times_low = 0.0
-    times_high = 15.0
-    times_bnds = (times_low, times_high)
+    times_high = [25.0, 15.0] # set 2 time boundaries (1st for small temperatures (2, 3, 4 grad) 2nd for others)
+    times_bnds = [(times_low, t_high) for t_high in times_high]
     dtimes = 1.0
-    n_times_max = int((times_high-times_low) / dtimes + 1) # effort+1
-    times_total = np.linspace(times_low, times_low + dtimes * (n_times_max - 1), n_times_max)
+    n_times_max = [int((t_high-times_low) / dtimes + 1) for t_high in times_high] # effort+1
+    times_total = [np.linspace(times_low, times_low + dtimes * (n - 1), n)  for n in n_times_max]
+
 
     # Initial conditions with initial time
     y0_t0 = (y0, times_low)
@@ -129,9 +131,9 @@ if __name__ == "__main__":
     for _ in range(N_mult):
         # Sample only over combinatins of both
         # for (n_temp, n_times) in factorize_reduced(effort):
-        for (n_times, n_temp) in iter.product(range(effort_low, min(effort, n_times_max - 2)), range(effort_low, min(effort, n_temp_max - 2))):
-            combinations.append(set_multistart_combinations(n_times, n_temp, times_total, temp_total, P, Const, 'cont'))
-
+        for (n_times, n_temp) in iter.product(range(effort_low, min(effort_times, min(n_times_max) - 2)), range(effort_low, min(effort_temp, n_temp_max - 2))):
+            combinations.append(set_multistart_combinations(n_times, n_temp, times_total, temp_total, temp_fixed, P, Const, 'discr'))
+    #print(combinations[0])
     # Create pool we will later use
     p = mp.Pool(N_parallel)
 
