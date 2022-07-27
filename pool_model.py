@@ -8,7 +8,7 @@ from functools import partial
 
 # Import custom functions for optimization
 from src.optimization import get_best_fischer_results, get_new_combinations_from_best, set_multistart_combinations, get_best_fischer_results2, gradient_descent, discrete_random
-from src.solving import factorize_reduced, convert_S_matrix_to_determinant, convert_S_matrix_to_sumeigenval, convert_S_matrix_to_mineigenval, calculate_Fischer_observable
+from src.solving import factorize_reduced, convert_S_matrix_to_determinant, convert_S_matrix_to_sumeigenval, convert_S_matrix_to_mineigenval, calculate_Fischer_observable, convert_S_matrix_to_eigval_ratio
 from src.database import convert_fischer_results, generate_new_collection, insert_fischer_dataclasses, drop_all_collections
 
 

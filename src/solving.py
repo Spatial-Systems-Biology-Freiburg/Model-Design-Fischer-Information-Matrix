@@ -31,7 +31,7 @@ def get_S_matrix(ODE_func, y0_t0, times, Q_arr, P, Const, jacobian=None, method=
 
         # Actually solve the ODE for the selected parameter values
         #r = solve_ivp(ODE_func, [t0, t.max()], y0, method='Radau', t_eval=t,  args=(Q, P, Const), jac=jacobian).y.T[1:,:]
-        r = odeint(ODE_func, y0, np.insert(t, 0, t0), args=(Q, P, Const), Dfun=jacobian).T[:, 1:]
+        r = odeint(ODE_func, y0, np.sort(np.insert(t, 0, t0)), args=(Q, P, Const), Dfun=jacobian).T[:, 1:]
 
         # Calculate the S-Matrix with the supplied jacobian
         S[(slice(None), slice(None)) + index] = r[1:]
@@ -83,6 +83,15 @@ def convert_S_matrix_to_mineigenval(times, Q_arr, P, Const, S, C):
     # Calculate sum eigenvals
     mineigval = np.min(np.linalg.eigvals(F))
     return mineigval
+
+
+def convert_S_matrix_to_eigval_ratio(times, Q_arr, P, Const, S, C):
+    # Calculate Fisher Matrix
+    F = S.dot(C).dot(S.T)
+
+    # Calculate sum eigenvals
+    ratio_eigval = np.min(np.linalg.eigvals(F)) / np.max(np.linalg.eigvals(F))
+    return ratio_eigval
 
 
 def calculate_Fischer_observable(combinations, ODE_func, Y0, jacobian, observable, method='wo_error', err=None):
