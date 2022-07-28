@@ -15,7 +15,7 @@ from src.database import convert_fischer_results, generate_new_collection, inser
 # System of equation for pool-model and sensitivities
 def pool_model_sensitivity(y, t, Q, P, Const):
     (a, b, c) = P
-    (Temp,) = Q
+    (Temp, measurement_type) = Q
     (n0, n_max) = Const
     (n, sa, sb, sc) = y
     return [
@@ -62,7 +62,7 @@ def optimization_run(combination, ODE_func, Y0, jacobian, observable, N_opt, N_s
 
     combination_best = [combination]  
     for opt_run in range (N_opt):
-        fisses = optim_func(combination_best, func_FIM_calc, N_spawn, N_best, temp_bnds, dtemp, times_bnds, dtimes, num_temp_fixed)
+        fisses = optim_func(combination_best, func_FIM_calc, N_spawn, N_best, temp_bnds, dtemp, times_bnds, dtimes, times_fixed, temp_fixed)
         if opt_run != N_opt - 1:
             combination_best = [(times, P, Q_arr, Const) for (obs, times, P, Q_arr, Const, Y0) in fisses]
     return fisses
@@ -70,26 +70,20 @@ def optimization_run(combination, ODE_func, Y0, jacobian, observable, N_opt, N_s
 
 if __name__ == "__main__":
     # Define constants for the simulation duration
-    n0 = 0.25
-    n_max = 2e4
-    effort_low = 2
-    effort = 11
-    Const = (n0, n_max)
+    measured_types = ['PC_O2', 'PC_N2', 'MRS_O2', 'MRS_N2']
+    n0_val = [4.0, 4.0, 1.0, 1.0]
+    n_max_val = [55333.333, 4060.0, 61691.75, 8760.0]
+    Const = tuple([(n0_val[i], n_max_val[i]) for i in range (len(measured_types))])
 
     # Define initial parameter guesses
-    a = 0.065
-    b = 0.01
-    c = 1.31
-
-    #2nd choice of parameters:
-    #a = 0.0673
-    #b = 0.01
-    #c = 1.314
-
-    P = (a, b, c)
+    P_PC_O2 = (0.19997174, 0.0043666, 0.26221441)
+    P_PC_N2 = (0.11509934, 0.00598643, 0.39997619)
+    P_MRS_O2 = (0.13543291, 0.00499995, 0.81373839)
+    P_MRS_N2 = (0.13562779, 0.00384184, 0.76810113)
+    P = (P_PC_O2, P_PC_N2, P_MRS_O2, P_MRS_N2)
 
     # Initial values for complete ODE (with S-Terms)
-    y0 = [n0, 0, 0, 0]
+    y0 = [[n0, 0, 0, 0] for n0 in n0_val]
 
     # Define bounds for sampling
     temp_low = 2.0
@@ -98,7 +92,7 @@ if __name__ == "__main__":
     dtemp = 1.0
     n_temp_max = int((temp_high - temp_low) / dtemp + 1) # effort+1
     temp_total = np.linspace(temp_low, temp_low + dtemp * (n_temp_max - 1) , n_temp_max)
-    temp_fixed = [2.0]
+    temp_fixed = [2.0, 10.0]
 
     times_low = 0.0
     times_high = [25.0, 15.0] # set 2 time boundaries (1st for small temperatures (2, 3, 4 grad) 2nd for others)
@@ -125,6 +119,10 @@ if __name__ == "__main__":
     # Begin sampling of time and temperature values
     combinations = []
 
+    # Determine optimization methods:
+    covariance_method = 'combined_error'
+    measurement_err = [0.5*n0_val[0], 1.0]
+
     # Iterate over every combination for total effort eg. for effort=16 we get combinations (2,8), (4,4), (8,2)
     # We exclude the "boundary" cases of (1,16) and (16,1)
     # Generate pairs of temperature and time and put everything in a large list
@@ -132,7 +130,7 @@ if __name__ == "__main__":
         # Sample only over combinatins of both
         # for (n_temp, n_times) in factorize_reduced(effort):
         for (n_times, n_temp) in iter.product(range(effort_low, min(effort_times, min(n_times_max) - 2)), range(effort_low, min(effort_temp, n_temp_max - 2))):
-            combinations.append(set_multistart_combinations(n_times, n_temp, times_total, temp_total, temp_fixed, P, Const, 'discr'))
+            combinations.append(set_multistart_combinations(n_times, n_temp, times_total, temp_total, P, Const, measured_types, times_fixed, temp_fixed, 'discr'))
     #print(combinations[0])
     # Create pool we will later use
     p = mp.Pool(N_parallel)
@@ -140,6 +138,28 @@ if __name__ == "__main__":
     # Begin optimization scheme
     start_time = time.time()
     print_line = "[Time: {:> 8.3f} Run: {:> " +str(len(str(N_opt))) + "}] Optimizing"
+
+    # Choose from N_mult_prior cobinations N_mult best for further optimization
+    #fischer_results = p.starmap(calculate_Fischer_observable, zip(
+    #        combinations,
+    #        iter.repeat(pool_model_sensitivity),
+    #        iter.repeat(y0_t0),
+    #        iter.repeat(jacobi),
+    #        iter.repeat(convert_S_matrix_to_determinant),
+    #        iter.repeat(covariance_method), # True if use covariance error matrix, False if not
+    #        iter.repeat(measurement_err) 
+    #))
+    #fisses = p.starmap(get_best_fischer_results, zip(
+    #        iter.product(range(effort_low, min(effort_times, min(n_times_max) - 2)), range(effort_low, min(effort_temp, n_temp_max - 2))),
+    #        iter.repeat(fischer_results),
+    #        iter.repeat(sorting_key),
+    #        iter.repeat(N_mult)
+    #), chunksize=100)
+    #combinations = []
+    #for ff in fisses:
+    #    for (obs, times, P, Q_arr, Const, Y0) in ff:
+    #        combinations.append((times, P, Q_arr, Const))
+    #print(print_line.format(time.time()-start_time, N_opt), "done")
 
     fisses = p.starmap(optimization_run, zip(
             combinations,
