@@ -52,7 +52,7 @@ def sorting_key(x):
     return x[0] * seperate_times / norm
 
 
-def optimization_run(combination, ODE_func, Y0, jacobian, observable, N_opt, N_spawn, N_best, temp_bnds, dtemp, times_bnds, dtimes, num_temp_fixed, method='discrete_random', method_cov='wo_error', err=None): 
+def optimization_run(combination, ODE_func, Y0, jacobian, observable, N_opt, N_spawn, N_best, temp_bnds, dtemp, times_bnds, dtimes, times_fixed=[], temp_fixed=[], method='discrete_random', method_cov='wo_error', err=None): 
     func_FIM_calc = partial(calculate_Fischer_observable, ODE_func= ODE_func, Y0=Y0, jacobian=jacobian, observable=observable, method=method_cov, err=err)
 
     if method == 'discrete_random':
@@ -100,6 +100,7 @@ if __name__ == "__main__":
     dtimes = 1.0
     n_times_max = [int((t_high-times_low) / dtimes + 1) for t_high in times_high] # effort+1
     times_total = [np.linspace(times_low, times_low + dtimes * (n - 1), n)  for n in n_times_max]
+    times_fixed = [np.array([1.0, 3.0, 6.0, 8.0, 10.0, 13.0, 15.0, 17.0])]
 
 
     # Initial conditions with initial time
@@ -171,15 +172,18 @@ if __name__ == "__main__":
             iter.repeat(N_spawn),
             iter.repeat(N_best),
             iter.repeat(temp_bnds),
-            iter.repeat(0.1),
+            iter.repeat(dtemp),
             iter.repeat(times_bnds),
-            iter.repeat(0.1),
-            iter.repeat('gradient_descent'),
-            iter.repeat('relative_error'),
-            iter.repeat(0.25) # relative error
-        ), chunksize=100)
-
-    print(print_line.format(time.time()-start_time, N_opt), "done")
+            iter.repeat(dtimes),
+            iter.repeat(times_fixed),
+            iter.repeat(temp_fixed),
+            iter.repeat('discrete_random'),
+            iter.repeat(covariance_method),
+            iter.repeat(measurement_err)
+        ), chunksize=1)
+    p.close()
+    p.join()
+    print(print_line.format(time.time()-start_time, 1), "done")
 
     # Database part
     fischer_dataclasses = convert_fischer_results(fisses)

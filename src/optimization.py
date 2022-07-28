@@ -14,7 +14,7 @@ def get_best_fischer_results2(fischer_results, N_best):
     return sorted(fischer_results, key=lambda x: x[0], reverse=True)[:N_best]
 
 
-def get_new_combinations_from_best(comb_old, N_spawn, temp_bnds, dtemp, times_bnds, dtimes, num_temp_fixed):
+def get_new_combinations_from_best(comb_old, N_spawn, temp_bnds, dtemp, times_bnds, dtimes, times_fixed, temp_fixed):
     (temp_low, temp_high) = temp_bnds
     (times_bnds_cold, times_bnds_hot) = times_bnds
     (times_low, times_high_cold) = times_bnds_cold
@@ -23,45 +23,48 @@ def get_new_combinations_from_best(comb_old, N_spawn, temp_bnds, dtemp, times_bn
     for (times, P, Q_arr, Const) in comb_old:
         # Also depend old result in case its better
         combinations.append((times, P, Q_arr, Const))
+        (temps, *other_variables) = Q_arr
         # Now spawn new results via next neighbors of current results
-        for _ in range(0, N_spawn):
+        for _ in range(0, N_spawn): 
             temps_new = np.array(
-                [T for T in Q_arr[0][:num_temp_fixed]] + [np.random.choice([max(temp_low, T-dtemp), T, min(temp_high, T+dtemp)]) for T in Q_arr[0][num_temp_fixed:]]
+                temp_fixed + [np.random.choice([max(temp_low, T-dtemp), T, min(temp_high, T+dtemp)]) for T in temps[len(temp_fixed):]]
             )
+            times_new = [t for t in times_fixed] + [
+                np.sort([np.random.choice([max(times_low, t-dtimes), t, min(times_high_cold, t+dtimes)]) for t in times[i]])
+                if temps_new[i] <= 4.0 else 
+                np.sort([np.random.choice([max(times_low, t-dtimes), t, min(times_high_hot, t+dtimes)]) for t in times[i]])
+                for i in range (len(times_fixed), len(temps))
+                ]
 
-            times_new = np.array([
-                    np.sort(np.array([np.random.choice([max(times_low, t-dtimes), t, min(times_high_cold, t+dtimes)]) for t in times[i]]))
-                    if temps_new[i] <= 4.0 else 
-                    np.sort(np.array([np.random.choice([max(times_low, t-dtimes), t, min(times_high_hot, t+dtimes)]) for t in times[i]]))  
-                for i in range (len(Q_arr[0]))
-                ])
-            combinations.append((times_new, P, [temps_new], Const))
+            combinations.append((times_new, P, [temps_new, *other_variables], Const))
     return combinations
 
 # Generate the initial combinations of times and temperatures
-def set_multistart_combinations(n_times, n_temp, times_total, temp_total, temp_fixed, P, Const, method='discr'):
+def set_multistart_combinations(n_times, n_temp, times_total, temp_total, P, Const, measured_types,  times_fixed=[], temp_fixed=[[]], method='discr'):
     (times_total_cold, times_total_hot) = times_total
     if method == 'discr':
-        temperatures = np.random.choice(temp_total, int(n_temp-len(temp_fixed)), replace=False)
-        temperatures = np.insert(temperatures, 0, temp_fixed)
-        times = np.array([
-            np.sort(np.random.choice(times_total_cold, int(n_times), replace=False)) 
-            if T <= 4.0 else 
-            np.sort(np.random.choice(times_total_hot, int(n_times), replace=False)) 
-            for T in temperatures
-            ])
+        temperatures = np.concatenate((temp_fixed, np.random.choice(temp_total, int(n_temp-len(temp_fixed)), replace=False)))
+        times = [t for t in times_fixed] + [
+                np.sort(np.random.choice(times_total_cold, int(n_times), replace=False))
+                if T <= 4.0 else 
+                np.sort(np.random.choice(times_total_hot, int(n_times), replace=False))
+                for T in temperatures[len(times_fixed):]
+            ]
+
     if method == 'cont':
-        temperatures = np.random.uniform(np.min(temp_total), np.max(temp_total), size=(n_temp-len(temp_fixed)))
-        temperatures = np.insert(temperatures, 0, temp_fixed)
-        times = np.array([
-            np.sort(np.random.uniform(np.min(times_total_cold), np.max(times_total), size=(n_times))) if T <= 4.0 else np.sort(np.random.uniform(np.min(times_total_hot), np.max(times_total), size=(n_times))) for T in temperatures
-            ])
-    return (times, P, [temperatures], Const)
+        temperatures = np.concatenate((temp_fixed, np.random.uniform(np.min(temp_total), np.max(temp_total), size=(n_temp-len(temp_fixed)))))                            
+        times = [t for t in times_fixed] + [
+                np.sort(np.random.uniform(np.min(times_total_cold), np.max(times_total_cold), size=(n_times)))
+                if T <= 4.0 else 
+                np.sort(np.random.uniform(np.min(times_total_hot), np.max(times_total_hot), size=(n_times)))
+                for T in temperatures[len(times_fixed):]
+            ]
+    return (times, P, [temperatures, measured_types], Const)
 
 # One optimization iteration using discrete random search
-def discrete_random(combination, func_FIM_calc, N_spawn, N_best, temp_bnds, dtemp, times_bnds, dtimes, num_temp_fixed):
+def discrete_random(combination, func_FIM_calc, N_spawn, N_best, temp_bnds, dtemp, times_bnds, dtimes, times_fixed, temp_fixed):
     # From 1 combination given choose N_spawn new ones 
-    combinations = get_new_combinations_from_best(combination, N_spawn, temp_bnds, dtemp, times_bnds, dtimes, num_temp_fixed)
+    combinations = get_new_combinations_from_best(combination, N_spawn, temp_bnds, dtemp, times_bnds, dtimes, times_fixed, temp_fixed)
     # calc fisher result for all new combinations 
     fischer_results = []
     for comb in combinations:

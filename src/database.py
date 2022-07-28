@@ -29,7 +29,7 @@ class FischerResult:
     '''Class to store a single fischer result.
     Use a list of this class to store many results.'''
     observable: np.ndarray
-    times: np.ndarray
+    times: list
     parameters: list
     q_arr: list
     constants: list
