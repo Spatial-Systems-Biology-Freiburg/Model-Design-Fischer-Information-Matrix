@@ -2,15 +2,16 @@ import numpy as np
 import itertools as iter
 
 
-
-def get_best_fischer_results(n_time_temp, fischer_results, sorting_key, N_best):
+def get_filtered_fischer_results(n_time_temp, fischer_results, N_best, n_temp_with_fixed_times):
     (n_times, n_temp) = n_time_temp
     # TODO use partial sort or some other efficient alrogithm to obtain O(n) scaling behvaiour
     # for best result retrieval
-    return sorted(filter(lambda x: x[1].shape[-1]==n_times and len(x[3][0])==n_temp, fischer_results), key=sorting_key, reverse=True)[:N_best]
+    # n_temp_with_fixed_times: number of temp with fixed times (already measured)
+    return sorted(filter(lambda x: len(x[1][n_temp_with_fixed_times])==n_times and len(x[3][0])==n_temp, fischer_results), key=lambda x: x[0], reverse=True)[:N_best]
 
 
 def get_best_fischer_results2(fischer_results, N_best):
+def get_best_fischer_results(fischer_results, N_best):
     return sorted(fischer_results, key=lambda x: x[0], reverse=True)[:N_best]
 
 
@@ -30,9 +31,9 @@ def get_new_combinations_from_best(comb_old, N_spawn, temp_bnds, dtemp, times_bn
                 temp_fixed + [np.random.choice([max(temp_low, T-dtemp), T, min(temp_high, T+dtemp)]) for T in temps[len(temp_fixed):]]
             )
             times_new = [t for t in times_fixed] + [
-                np.sort([np.random.choice([max(times_low, t-dtimes), t, min(times_high_cold, t+dtimes)]) for t in times[i]])
+                np.sort([times[i][0]] + [np.random.choice([max(times_low, t-dtimes), t, min(times_high_cold, t+dtimes)]) for t in times[i][1:]])
                 if temps_new[i] <= 4.0 else 
-                np.sort([np.random.choice([max(times_low, t-dtimes), t, min(times_high_hot, t+dtimes)]) for t in times[i]])
+                np.sort([times[i][0]] + [np.random.choice([max(times_low, t-dtimes), t, min(times_high_hot, t+dtimes)]) for t in times[i][1:]])
                 for i in range (len(times_fixed), len(temps))
                 ]
 
@@ -45,18 +46,18 @@ def set_multistart_combinations(n_times, n_temp, times_total, temp_total, P, Con
     if method == 'discr':
         temperatures = np.concatenate((temp_fixed, np.random.choice(temp_total, int(n_temp-len(temp_fixed)), replace=False)))
         times = [t for t in times_fixed] + [
-                np.sort(np.random.choice(times_total_cold, int(n_times), replace=False))
+                np.sort(np.insert(np.random.choice(times_total_cold, int(n_times-1), replace=False), 0, min(times_total_cold)))
                 if T <= 4.0 else 
-                np.sort(np.random.choice(times_total_hot, int(n_times), replace=False))
+                np.sort(np.insert(np.random.choice(times_total_hot, int(n_times-1), replace=False), 0, min(times_total_hot)))
                 for T in temperatures[len(times_fixed):]
             ]
 
     if method == 'cont':
         temperatures = np.concatenate((temp_fixed, np.random.uniform(np.min(temp_total), np.max(temp_total), size=(n_temp-len(temp_fixed)))))                            
         times = [t for t in times_fixed] + [
-                np.sort(np.random.uniform(np.min(times_total_cold), np.max(times_total_cold), size=(n_times)))
+                np.sort(np.insert(np.random.uniform(np.min(times_total_cold), np.max(times_total_cold), size=(n_times-1)), 0, min(times_total_cold)))
                 if T <= 4.0 else 
-                np.sort(np.random.uniform(np.min(times_total_hot), np.max(times_total_hot), size=(n_times)))
+                np.sort(np.insert(np.random.uniform(np.min(times_total_hot), np.max(times_total_hot), size=(n_times-1)), 0, min(times_total_hot)))
                 for T in temperatures[len(times_fixed):]
             ]
     return (times, P, [temperatures, measured_types], Const)
@@ -70,7 +71,7 @@ def discrete_random(combination, func_FIM_calc, N_spawn, N_best, temp_bnds, dtem
     for comb in combinations:
         fischer_results.append(func_FIM_calc(combinations=comb))
     # Choose best solutions according to optimization_method 
-    fisses = get_best_fischer_results2(fischer_results, N_best) # e.g. get_best_fischer_results    
+    fisses = get_best_fischer_results(fischer_results, N_best)  
     return fisses
 
 # Calculate the gradient of the Fisher observable needed for gradient descent method                                      
